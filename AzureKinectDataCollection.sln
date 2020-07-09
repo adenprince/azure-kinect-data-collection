@@ -4,6 +4,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.29806.167
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AzureKinectDataCollection", "AzureKinectDataCollection.vcxproj", "{A60696D1-6326-4D52-9365-49BED5399E46}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9E78B4CC-B641-42A1-8375-75A2CC8B3124} = {9E78B4CC-B641-42A1-8375-75A2CC8B3124}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "window_controller_3d", "sample_helper_libs\window_controller_3d\window_controller_3d.vcxproj", "{9E78B4CC-B641-42A1-8375-75A2CC8B3124}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +26,12 @@ Global
 		{A60696D1-6326-4D52-9365-49BED5399E46}.Release|x64.Build.0 = Release|x64
 		{A60696D1-6326-4D52-9365-49BED5399E46}.Release|x86.ActiveCfg = Release|Win32
 		{A60696D1-6326-4D52-9365-49BED5399E46}.Release|x86.Build.0 = Release|Win32
+		{9E78B4CC-B641-42A1-8375-75A2CC8B3124}.Debug|x64.ActiveCfg = Debug|x64
+		{9E78B4CC-B641-42A1-8375-75A2CC8B3124}.Debug|x64.Build.0 = Debug|x64
+		{9E78B4CC-B641-42A1-8375-75A2CC8B3124}.Debug|x86.ActiveCfg = Debug|x64
+		{9E78B4CC-B641-42A1-8375-75A2CC8B3124}.Release|x64.ActiveCfg = Release|x64
+		{9E78B4CC-B641-42A1-8375-75A2CC8B3124}.Release|x64.Build.0 = Release|x64
+		{9E78B4CC-B641-42A1-8375-75A2CC8B3124}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

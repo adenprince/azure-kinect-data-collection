@@ -43,6 +43,39 @@ int getFilenameIndex() {
     return fileIndex;
 }
 
+// Output joint angles from a passed skeleton 
+void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, ofstream& outputFile) {
+    // Store vectors representing lines between each joint
+    vec upperArmVecLeft(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position, skeleton.joints[K4ABT_JOINT_SHOULDER_LEFT].position);
+    vec forearmVecLeft(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position, skeleton.joints[K4ABT_JOINT_WRIST_LEFT].position);
+
+    vec upperArmVecRight(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position, skeleton.joints[K4ABT_JOINT_SHOULDER_RIGHT].position);
+    vec forearmVecRight(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position, skeleton.joints[K4ABT_JOINT_WRIST_RIGHT].position);
+
+    vec upperLegVecLeft(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position, skeleton.joints[K4ABT_JOINT_HIP_LEFT].position);
+    vec lowerLegVecLeft(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position, skeleton.joints[K4ABT_JOINT_ANKLE_LEFT].position);
+
+    vec upperLegVecRight(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position, skeleton.joints[K4ABT_JOINT_HIP_RIGHT].position);
+    vec lowerLegVecRight(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position, skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position);
+
+    // Calculate joint angles
+    float leftElbowAngle = twoVecsToAngle(upperArmVecLeft, forearmVecLeft);
+    float rightElbowAngle = twoVecsToAngle(upperArmVecRight, forearmVecRight);
+    float leftKneeAngle = twoVecsToAngle(upperLegVecLeft, lowerLegVecLeft);
+    float rightKneeAngle = twoVecsToAngle(upperLegVecRight, lowerLegVecRight);
+
+    // Print joint angles and write them to a file
+    printf("ID: %d\n", id);
+    printf("Left elbow angle: %f\n", leftElbowAngle);
+    printf("Right elbow angle: %f\n", rightElbowAngle);
+    printf("Left knee angle: %f\n", leftKneeAngle);
+    printf("Right knee angle: %f\n", rightKneeAngle);
+
+    outputFile << id << ","
+        << leftElbowAngle << "," << rightElbowAngle << ","
+        << leftKneeAngle << "," << rightKneeAngle << endl;
+}
+
 int main(int argc, char* argv[]) {
     // Number of frames that will be captured
     const int MAX_FRAMES = 100;
@@ -138,39 +171,12 @@ int main(int argc, char* argv[]) {
                 }
 
                 for(uint32_t i = 0; i < num_bodies; i++) {
+                    uint32_t id = k4abt_frame_get_body_id(body_frame, i);
                     k4abt_skeleton_t skeleton;
                     k4abt_frame_get_body_skeleton(body_frame, i, &skeleton);
-                    uint32_t id = k4abt_frame_get_body_id(body_frame, i);
 
-                    // Store vectors representing lines between each joint
-                    vec upperArmVecLeft(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position, skeleton.joints[K4ABT_JOINT_SHOULDER_LEFT].position);
-                    vec forearmVecLeft(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position, skeleton.joints[K4ABT_JOINT_WRIST_LEFT].position);
-                    
-                    vec upperArmVecRight(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position, skeleton.joints[K4ABT_JOINT_SHOULDER_RIGHT].position);
-                    vec forearmVecRight(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position, skeleton.joints[K4ABT_JOINT_WRIST_RIGHT].position);
-                    
-                    vec upperLegVecLeft(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position, skeleton.joints[K4ABT_JOINT_HIP_LEFT].position);
-                    vec lowerLegVecLeft(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position, skeleton.joints[K4ABT_JOINT_ANKLE_LEFT].position);
-                    
-                    vec upperLegVecRight(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position, skeleton.joints[K4ABT_JOINT_HIP_RIGHT].position);
-                    vec lowerLegVecRight(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position, skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position);
 
-                    // Calculate joint angles
-                    float leftElbowAngle = twoVecsToAngle(upperArmVecLeft, forearmVecLeft);
-                    float rightElbowAngle = twoVecsToAngle(upperArmVecRight, forearmVecRight);
-                    float leftKneeAngle = twoVecsToAngle(upperLegVecLeft, lowerLegVecLeft);
-                    float rightKneeAngle = twoVecsToAngle(upperLegVecRight, lowerLegVecRight);
-
-                    // Print joint angles and write them to a file
-                    printf("ID: %d\n", id);
-                    printf("Left elbow angle: %f\n", leftElbowAngle);
-                    printf("Right elbow angle: %f\n", rightElbowAngle);
-                    printf("Left knee angle: %f\n", leftKneeAngle);
-                    printf("Right knee angle: %f\n", rightKneeAngle);
-
-                    outputFile << id << ","
-                               << leftElbowAngle << "," << rightElbowAngle << ","
-                               << leftKneeAngle << "," << rightKneeAngle << endl;
+                    getJointAngles(id, skeleton, outputFile);
                 }
 
                 k4abt_frame_release(body_frame); // Remember to release the body frame once you finish using it
@@ -203,7 +209,7 @@ int main(int argc, char* argv[]) {
     k4abt_tracker_destroy(tracker);
     k4a_device_stop_cameras(device);
     k4a_device_close(device);
-    
+
     // Close file
     outputFile.close();
 
