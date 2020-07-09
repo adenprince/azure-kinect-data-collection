@@ -16,6 +16,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)..\..\content\**\*.*" />
+    <None Include="packages.config" />
+    <None Include="dnn_model_2_0.onnx" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
