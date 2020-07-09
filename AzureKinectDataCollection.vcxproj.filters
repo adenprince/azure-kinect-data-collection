@@ -20,12 +20,13 @@
     <None Include="dnn_model_2_0.onnx" />
     <None Include="$(MSBuildThisFileDirectory)..\..\content\**\*.*" />
     <None Include="$(MSBuildThisFileDirectory)..\..\content\**\*.*" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\content\**\*.*" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.c">
+    <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="vec.c">
+    <ClCompile Include="vec.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

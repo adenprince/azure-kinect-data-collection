@@ -140,8 +140,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.c" />
-    <ClCompile Include="vec.c" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="vec.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="dnn_model_2_0.onnx" />

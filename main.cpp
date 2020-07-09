@@ -1,7 +1,8 @@
 // This file was made using sample code obtained from: https://docs.microsoft.com/en-us/azure/kinect-dk/build-first-body-app
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <fstream>
+#include <iostream>
+#include <string>
 
 #include <k4abt.h>
 
@@ -15,6 +16,8 @@
         exit(1);                                                                                         \
     }                                                                                                    \
 
+using namespace std;
+
 int main() {
     const int MAX_FRAMES = 100;
     k4a_device_t device = NULL;
@@ -22,13 +25,11 @@ int main() {
     printf("Open K4A Device succeeded.\n");
 
     // Open a new file named output.csv in current directory
-    FILE* output = NULL;
-    fopen_s(&output, "output.csv", "w+"); // If this file exists, it will be overwritten
+    ofstream outputFile;
+    outputFile.open("output.csv"); // If this file exists, it will be overwritten
 
     // Write column names to the output file
-    if(output != NULL) {
-        fprintf(output, "ID,Left Elbow Angle,Right Elbow Angle,Left Knee Angle,Right Knee Angle\n");
-    }
+    outputFile << "ID,Left Elbow Angle,Right Elbow Angle,Left Knee Angle,Right Knee Angle\n";
 
     // Start camera. Make sure depth camera is enabled.
     k4a_device_configuration_t deviceConfig = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
@@ -76,9 +77,9 @@ int main() {
 
                 printf("%zu bodies are detected on frame %d\n", num_bodies, frame_count);
 
-                // Add empty line to csv file if no bodies are detected
-                if(num_bodies == 0 && output != NULL) {
-                    fprintf(output, ",,,,\n");
+                // Add empty line to CSV file if no bodies are detected
+                if(num_bodies == 0) {
+                    outputFile << ",,,," << endl;
                 }
 
                 for(uint32_t i = 0; i < num_bodies; i++) {
@@ -87,17 +88,17 @@ int main() {
                     uint32_t id = k4abt_frame_get_body_id(body_frame, i);
 
                     // Store vectors representing lines between each joint
-                    vec upperArmVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_SHOULDER_LEFT].position.xyz);
-                    vec forearmVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_WRIST_LEFT].position.xyz);
+                    vec upperArmVecLeft(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position, skeleton.joints[K4ABT_JOINT_SHOULDER_LEFT].position);
+                    vec forearmVecLeft(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position, skeleton.joints[K4ABT_JOINT_WRIST_LEFT].position);
                     
-                    vec upperArmVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_SHOULDER_RIGHT].position.xyz);
-                    vec forearmVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_WRIST_RIGHT].position.xyz);
+                    vec upperArmVecRight(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position, skeleton.joints[K4ABT_JOINT_SHOULDER_RIGHT].position);
+                    vec forearmVecRight(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position, skeleton.joints[K4ABT_JOINT_WRIST_RIGHT].position);
                     
-                    vec upperLegVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_HIP_LEFT].position.xyz);
-                    vec lowerLegVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_ANKLE_LEFT].position.xyz);
+                    vec upperLegVecLeft(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position, skeleton.joints[K4ABT_JOINT_HIP_LEFT].position);
+                    vec lowerLegVecLeft(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position, skeleton.joints[K4ABT_JOINT_ANKLE_LEFT].position);
                     
-                    vec upperLegVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_HIP_RIGHT].position.xyz);
-                    vec lowerLegVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position.xyz);
+                    vec upperLegVecRight(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position, skeleton.joints[K4ABT_JOINT_HIP_RIGHT].position);
+                    vec lowerLegVecRight(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position, skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position);
 
                     // Calculate joint angles
                     float leftElbowAngle = twoVecsToAngle(upperArmVecLeft, forearmVecLeft);
@@ -112,9 +113,9 @@ int main() {
                     printf("Left knee angle: %f\n", leftKneeAngle);
                     printf("Right knee angle: %f\n", rightKneeAngle);
 
-                    if(output != NULL) {
-                        fprintf(output, "%d,%f,%f,%f,%f\n", id, leftElbowAngle, rightElbowAngle, leftKneeAngle, rightKneeAngle);
-                    }
+                    outputFile << id << ","
+                               << leftElbowAngle << "," << rightElbowAngle << ","
+                               << leftKneeAngle << "," << rightKneeAngle << endl;
                 }
 
                 k4abt_frame_release(body_frame); // Remember to release the body frame once you finish using it
@@ -149,9 +150,7 @@ int main() {
     k4a_device_close(device);
     
     // Close file
-    if(output != NULL) {
-        fclose(output);
-    }
+    outputFile.close();
 
     return 0;
 }
