@@ -18,15 +18,70 @@
 
 using namespace std;
 
-int main() {
+// Check if a file exists with the passed filename
+bool fileExists(string filename) {
+    ifstream inputFile;
+    inputFile.open(filename);
+    bool isOpen = inputFile.is_open();
+    inputFile.close();
+    return isOpen;
+}
+
+// Find the first unused indexed output filename
+int getFilenameIndex() {
+    int fileIndex = 1;
+
+    while(fileExists("output" + to_string(fileIndex) + ".csv") && fileIndex < INT_MAX) {
+        fileIndex++;
+    }
+
+    if(fileIndex == INT_MAX && fileExists("output" + to_string(fileIndex) + ".csv")) {
+        printf("Maximum number of output files used.\n");
+        exit(1);
+    }
+
+    return fileIndex;
+}
+
+int main(int argc, char* argv[]) {
+    // Number of frames that will be captured
     const int MAX_FRAMES = 100;
+
     k4a_device_t device = NULL;
     VERIFY(k4a_device_open(0, &device), "Open K4A Device failed!");
     printf("Open K4A Device succeeded.\n");
 
-    // Open a new file named output.csv in current directory
+    // Open output file
     ofstream outputFile;
-    outputFile.open("output.csv"); // If this file exists, it will be overwritten
+    string outputFilename;
+
+    // Set output filename to the second command-line argument if it exists
+    if(argc == 2) {
+        outputFilename = argv[1];
+
+        // Make sure the program is not overwriting a file
+        if(fileExists(outputFilename)) {
+            printf("File %s already exists.\n", outputFilename.c_str());
+            outputFile.close();
+            exit(1);
+        }
+    }
+    // Otherwise, set output filename to "output" and the first available index
+    else {
+        outputFilename = "output" + to_string(getFilenameIndex()) + ".csv";
+    }
+
+    outputFile.open(outputFilename);
+
+    // Check if file opened correctly
+    if(outputFile.is_open()) {
+        printf("Open file %s succeeded.\n", outputFilename.c_str());
+    }
+    else {
+        printf("Open file %s failed.\n", outputFilename.c_str());
+        outputFile.close();
+        exit(1);
+    }
 
     // Write column names to the output file
     outputFile << "ID,Left Elbow Angle,Right Elbow Angle,Left Knee Angle,Right Knee Angle\n";
