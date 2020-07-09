@@ -3,43 +3,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define _USE_MATH_DEFINES
-#include <math.h>
-
-#include <k4a/k4a.h>
 #include <k4abt.h>
+
+#include "vec.h"
 
 
 
 #define VERIFY(result, error)                                                                            \
-    if(result != K4A_RESULT_SUCCEEDED)                                                                   \
-    {                                                                                                    \
+    if(result != K4A_RESULT_SUCCEEDED) {                                                                 \
         printf("%s \n - (File: %s, Function: %s, Line: %d)\n", error, __FILE__, __FUNCTION__, __LINE__); \
         exit(1);                                                                                         \
     }                                                                                                    \
-
-// Get a vector between two points
-struct _xyz twoPointsToVec(struct _xyz from, struct _xyz to) {
-    struct _xyz res;
-    res.x = to.x - from.x;
-    res.y = to.y - from.y;
-    res.z = to.z - from.z;
-    return res;
-}
-
-// Get the angle between two vectors
-float twoVecsToAngle(struct _xyz vec1, struct _xyz vec2) {
-    float dotProduct = vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z;
-    float vec1Mag = sqrtf(vec1.x * vec1.x + vec1.y * vec1.y + vec1.z * vec1.z);
-    float vec2Mag = sqrtf(vec2.x * vec2.x + vec2.y * vec2.y + vec2.z * vec2.z);
-    float res = acosf(dotProduct / (vec1Mag * vec2Mag)) * 180 / (float) M_PI;
-    return res;
-}
 
 int main() {
     const int MAX_FRAMES = 100;
     k4a_device_t device = NULL;
     VERIFY(k4a_device_open(0, &device), "Open K4A Device failed!");
+    printf("Open K4A Device succeeded.\n");
 
     // Open a new file named output.csv in current directory
     FILE* output = NULL;
@@ -55,14 +35,17 @@ int main() {
     deviceConfig.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
     deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_OFF;
     VERIFY(k4a_device_start_cameras(device, &deviceConfig), "Start K4A cameras failed!");
+    printf("Start K4A cameras succeeded.\n");
 
     k4a_calibration_t sensor_calibration;
     VERIFY(k4a_device_get_calibration(device, deviceConfig.depth_mode, deviceConfig.color_resolution, &sensor_calibration),
         "Get depth camera calibration failed!");
+    printf("Get depth camera calibration succeeded.\n");
 
     k4abt_tracker_t tracker = NULL;
     k4abt_tracker_configuration_t tracker_config = K4ABT_TRACKER_CONFIG_DEFAULT;
     VERIFY(k4abt_tracker_create(&sensor_calibration, tracker_config, &tracker), "Body tracker initialization failed!");
+    printf("Body tracker initialization succeeded.\n");
 
     int frame_count = 0;
 
@@ -104,17 +87,17 @@ int main() {
                     uint32_t id = k4abt_frame_get_body_id(body_frame, i);
 
                     // Store vectors representing lines between each joint
-                    struct _xyz upperArmVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_SHOULDER_LEFT].position.xyz);
-                    struct _xyz forearmVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_WRIST_LEFT].position.xyz);
+                    vec upperArmVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_SHOULDER_LEFT].position.xyz);
+                    vec forearmVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_WRIST_LEFT].position.xyz);
                     
-                    struct _xyz upperArmVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_SHOULDER_RIGHT].position.xyz);
-                    struct _xyz forearmVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_WRIST_RIGHT].position.xyz);
+                    vec upperArmVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_SHOULDER_RIGHT].position.xyz);
+                    vec forearmVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_WRIST_RIGHT].position.xyz);
                     
-                    struct _xyz upperLegVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_HIP_LEFT].position.xyz);
-                    struct _xyz lowerLegVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_ANKLE_LEFT].position.xyz);
+                    vec upperLegVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_HIP_LEFT].position.xyz);
+                    vec lowerLegVecLeft = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position.xyz, skeleton.joints[K4ABT_JOINT_ANKLE_LEFT].position.xyz);
                     
-                    struct _xyz upperLegVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_HIP_RIGHT].position.xyz);
-                    struct _xyz lowerLegVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position.xyz);
+                    vec upperLegVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_HIP_RIGHT].position.xyz);
+                    vec lowerLegVecRight = twoPointsToVec(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position.xyz, skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position.xyz);
 
                     // Calculate joint angles
                     float leftElbowAngle = twoVecsToAngle(upperArmVecLeft, forearmVecLeft);
