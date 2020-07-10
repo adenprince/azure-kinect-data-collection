@@ -340,3 +340,4 @@ ASALocalRun/
 healthchecksdb
 /dnn_model_2_0.onnx
 *.csv
+*.mkv

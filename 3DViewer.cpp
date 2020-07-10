@@ -11,10 +11,12 @@ void PrintUsage()
     printf("  - RuntimeMode: \n");
     printf("      CPU - Use the CPU only mode. It runs on machines without a GPU but it will be much slower\n");
     printf("      OFFLINE - Play a specified file. Does not require Kinect device\n");
+    printf("      OUTPUT - Write angle information to a specified file in CSV format.\n");
     printf("e.g.   (k4abt_)simple_3d_viewer.exe WFOV_BINNED CPU\n");
     printf("e.g.   (k4abt_)simple_3d_viewer.exe CPU\n");
     printf("e.g.   (k4abt_)simple_3d_viewer.exe WFOV_BINNED\n");
     printf("e.g.   (k4abt_)simple_3d_viewer.exe OFFLINE MyFile.mkv\n");
+    printf("e.g.   (k4abt_)simple_3d_viewer.exe OUTPUT output.csv\n");
 }
 
 void PrintAppUsage()
@@ -38,6 +40,103 @@ void PrintAppUsage()
 bool s_isRunning = true;
 Visualization::Layout3d s_layoutMode = Visualization::Layout3d::OnlyMainView;
 bool s_visualizeJointFrame = false;
+
+
+// Check if a file exists with the passed filename
+bool fileExists(std::string filename) {
+    std::ifstream inputFile;
+    inputFile.open(filename);
+    bool isOpen = inputFile.is_open();
+    inputFile.close();
+    return isOpen;
+}
+
+// Find the first unused indexed output filename
+int getFilenameIndex() {
+    int fileIndex = 1;
+
+    while (fileExists("output" + std::to_string(fileIndex) + ".csv") && fileIndex < INT_MAX) {
+        fileIndex++;
+    }
+
+    if (fileIndex == INT_MAX && fileExists("output" + std::to_string(fileIndex) + ".csv")) {
+        printf("Maximum number of output files used.\n");
+        exit(1);
+    }
+
+    return fileIndex;
+}
+
+// Output joint angles from a passed skeleton 
+void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, std::ofstream& outputFile) {
+    // Store vectors representing lines between each joint
+    vec upperArmVecLeft(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position, skeleton.joints[K4ABT_JOINT_SHOULDER_LEFT].position);
+    vec forearmVecLeft(skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position, skeleton.joints[K4ABT_JOINT_WRIST_LEFT].position);
+
+    vec upperArmVecRight(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position, skeleton.joints[K4ABT_JOINT_SHOULDER_RIGHT].position);
+    vec forearmVecRight(skeleton.joints[K4ABT_JOINT_ELBOW_RIGHT].position, skeleton.joints[K4ABT_JOINT_WRIST_RIGHT].position);
+
+    vec upperLegVecLeft(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position, skeleton.joints[K4ABT_JOINT_HIP_LEFT].position);
+    vec lowerLegVecLeft(skeleton.joints[K4ABT_JOINT_KNEE_LEFT].position, skeleton.joints[K4ABT_JOINT_ANKLE_LEFT].position);
+
+    vec upperLegVecRight(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position, skeleton.joints[K4ABT_JOINT_HIP_RIGHT].position);
+    vec lowerLegVecRight(skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position, skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position);
+
+    // Calculate joint angles
+    float leftElbowAngle = twoVecsToAngle(upperArmVecLeft, forearmVecLeft);
+    float rightElbowAngle = twoVecsToAngle(upperArmVecRight, forearmVecRight);
+    float leftKneeAngle = twoVecsToAngle(upperLegVecLeft, lowerLegVecLeft);
+    float rightKneeAngle = twoVecsToAngle(upperLegVecRight, lowerLegVecRight);
+
+    // Print joint angles and write them to a file
+    printf("ID: %d\n", id);
+    printf("Left elbow angle: %f\n", leftElbowAngle);
+    printf("Right elbow angle: %f\n", rightElbowAngle);
+    printf("Left knee angle: %f\n", leftKneeAngle);
+    printf("Right knee angle: %f\n", rightKneeAngle);
+
+    outputFile << id << ","
+        << leftElbowAngle << "," << rightElbowAngle << ","
+        << leftKneeAngle << "," << rightKneeAngle << std::endl;
+}
+
+// Attempt to open output file and write the first line
+void initOutputFile(std::ofstream& outputFile, std::string outputFileName) {
+    outputFile.open(outputFileName);
+
+    if(outputFile.is_open()) {
+        printf("Open file %s succeeded.\n", outputFileName.c_str());
+    }
+    else {
+        printf("Open file %s failed.\n", outputFileName.c_str());
+        s_isRunning = false;
+    }
+
+    // Write column names to the output file
+    outputFile << "ID,Left Elbow Angle,Right Elbow Angle,Left Knee Angle,Right Knee Angle\n";
+}
+
+// Display body and angle information from frame
+void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& frame_count) {
+    size_t num_bodies = k4abt_frame_get_num_bodies(bodyFrame);
+    frame_count++;
+
+    printf("%zu bodies are detected on frame %d\n", num_bodies, frame_count);
+
+    // Add empty line to CSV file if no bodies are detected
+    if(num_bodies == 0) {
+        outputFile << ",,,," << std::endl;
+    }
+
+    // Get info for each detected body
+    for(uint32_t i = 0; i < num_bodies; i++) {
+        uint32_t id = k4abt_frame_get_body_id(bodyFrame, i);
+        k4abt_skeleton_t skeleton;
+        k4abt_frame_get_body_skeleton(bodyFrame, i, &skeleton);
+
+        getJointAngles(id, skeleton, outputFile);
+    }
+}
 
 
 int64_t ProcessKey(void* /*context*/, int key)
@@ -97,12 +196,36 @@ bool ParseInputSettingsFromArg(int argc, char** argv, InputSettings& inputSettin
                 return false;
             }
         }
+        else if (inputArg == std::string("OUTPUT"))
+        {
+            if (i < argc - 1)
+            {
+                // Take the next argument after OUTPUT as file name
+                inputSettings.OutputFileName = argv[i + 1];
+                i++;
+            }
+            else
+            {
+                return false;
+            }
+        }
         else
         {
             printf("Error command not understood: %s\n", inputArg.c_str());
             return false;
         }
     }
+
+    if (inputSettings.OutputFileName == "")
+    {
+        inputSettings.OutputFileName = "output" + std::to_string(getFilenameIndex()) + ".csv";
+    }
+    else if (fileExists(inputSettings.OutputFileName))
+    {
+        printf("File %s already exists.\n", inputSettings.OutputFileName.c_str());
+        return false;
+    }
+
     return true;
 
 }
@@ -228,6 +351,11 @@ void PlayFile(InputSettings inputSettings) {
     window3d.SetCloseCallback(CloseCallback);
     window3d.SetKeyCallback(ProcessKey);
 
+    std::ofstream outputFile;
+    initOutputFile(outputFile, inputSettings.OutputFileName);
+
+    int frame_count = 0;
+
     while (result == K4A_STREAM_RESULT_SUCCEEDED)
     {
         result = k4a_playback_get_next_capture(playback_handle, &capture);
@@ -239,6 +367,7 @@ void PlayFile(InputSettings inputSettings) {
                 //If no depth image, print a warning and skip to next frame
                 printf("Warning: No depth image, skipping frame\n");
                 k4a_capture_release(capture);
+                frame_count++;
                 continue;
             }
             // Release the Depth image
@@ -257,9 +386,9 @@ void PlayFile(InputSettings inputSettings) {
             k4a_wait_result_t pop_frame_result = k4abt_tracker_pop_result(tracker, &bodyFrame, K4A_WAIT_INFINITE);
             if (pop_frame_result == K4A_WAIT_RESULT_SUCCEEDED)
             {
-                size_t num_bodies = k4abt_frame_get_num_bodies(bodyFrame);
-                printf("%zu bodies are detected\n", num_bodies);
                 /************* Successfully get a body tracking result, process the result here ***************/
+                processFrame(bodyFrame, outputFile, frame_count);
+
                 VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
                 //Release the bodyFrame
                 k4abt_frame_release(bodyFrame);
@@ -287,7 +416,8 @@ void PlayFile(InputSettings inputSettings) {
     window3d.Delete();
     printf("Finished body tracking processing!\n");
     k4a_playback_close(playback_handle);
-
+    
+    outputFile.close();
 }
 
 void PlayFromDevice(InputSettings inputSettings) {
@@ -317,6 +447,11 @@ void PlayFromDevice(InputSettings inputSettings) {
     window3d.Create("3D Visualization", sensorCalibration);
     window3d.SetCloseCallback(CloseCallback);
     window3d.SetKeyCallback(ProcessKey);
+
+    std::ofstream outputFile;
+    initOutputFile(outputFile, inputSettings.OutputFileName);
+
+    int frame_count = 0;
 
     while (s_isRunning)
     {
@@ -350,6 +485,8 @@ void PlayFromDevice(InputSettings inputSettings) {
         if (popFrameResult == K4A_WAIT_RESULT_SUCCEEDED)
         {
             /************* Successfully get a body tracking result, process the result here ***************/
+            processFrame(bodyFrame, outputFile, frame_count);
+
             VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
             //Release the bodyFrame
             k4abt_frame_release(bodyFrame);
@@ -369,5 +506,5 @@ void PlayFromDevice(InputSettings inputSettings) {
     k4a_device_stop_cameras(device);
     k4a_device_close(device);
 
-
+    outputFile.close();
 }

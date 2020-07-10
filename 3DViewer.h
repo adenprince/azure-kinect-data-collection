@@ -4,6 +4,9 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include <fstream>
+#include <string>
+
 #include <k4arecord/playback.h>
 #include <k4a/k4a.h>
 #include <k4abt.h>
@@ -12,12 +15,15 @@
 #include <Utilities.h>
 #include <Window3dWrapper.h>
 
+#include "vec.h"
+
 struct InputSettings
 {
     k4a_depth_mode_t DepthCameraMode = K4A_DEPTH_MODE_NFOV_UNBINNED;
     bool CpuOnlyMode = false;
     bool Offline = false;
     std::string FileName;
+    std::string OutputFileName;
 };
 
 void PrintUsage();
