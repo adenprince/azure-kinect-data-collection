@@ -1,9 +1,10 @@
 // This file was made using sample code obtained from: https://github.com/microsoft/Azure-Kinect-Samples/blob/master/body-tracking-samples/simple_3d_viewer/main.cpp
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include <array>
 #include <iostream>
-#include <map>
-#include <vector>
 #include <fstream>
 #include <string>
 

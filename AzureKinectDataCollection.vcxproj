@@ -145,7 +145,6 @@
   <ItemGroup>
     <ClCompile Include="3DViewer.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="vec.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="dnn_model_2_0.onnx" />
