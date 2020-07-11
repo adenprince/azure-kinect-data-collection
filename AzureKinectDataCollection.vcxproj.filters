@@ -24,6 +24,7 @@
     <None Include="$(MSBuildThisFileDirectory)..\..\content\**\*.*" />
     <None Include="$(MSBuildThisFileDirectory)..\..\content\**\*.*" />
     <None Include="$(MSBuildThisFileDirectory)..\..\content\**\*.*" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\content\**\*.*" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

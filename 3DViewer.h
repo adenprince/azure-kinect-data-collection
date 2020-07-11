@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <chrono>
 
 #include <k4arecord/playback.h>
 #include <k4a/k4a.h>

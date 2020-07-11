@@ -81,7 +81,7 @@ float threePointsToAngle(k4a_float3_t& p1, k4a_float3_t& p2, k4a_float3_t& p3) {
 }
 
 // Output joint angles from a passed skeleton 
-void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, std::ofstream& outputFile) {
+void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, std::ofstream& outputFile, long long durationCount) {
     // Calculate joint angles
     float leftElbowAngle = threePointsToAngle(skeleton.joints[K4ABT_JOINT_WRIST_LEFT].position,
                                               skeleton.joints[K4ABT_JOINT_ELBOW_LEFT].position,
@@ -103,9 +103,9 @@ void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, std::ofstream& outp
     printf("Left knee angle: %f\n", leftKneeAngle);
     printf("Right knee angle: %f\n", rightKneeAngle);
 
-    outputFile << id << ","
-        << leftElbowAngle << "," << rightElbowAngle << ","
-        << leftKneeAngle << "," << rightKneeAngle << std::endl;
+    outputFile << durationCount << "," << id << ","
+               << leftElbowAngle << "," << rightElbowAngle << ","
+               << leftKneeAngle << "," << rightKneeAngle << std::endl;
 }
 
 // Attempt to open output file and write the first line
@@ -121,19 +121,29 @@ void initOutputFile(std::ofstream& outputFile, std::string& outputFileName) {
     }
 
     // Write column names to the output file
-    outputFile << "ID,Left Elbow Angle,Right Elbow Angle,Left Knee Angle,Right Knee Angle\n";
+    outputFile << "Time Since Last Frame,ID,Left Elbow Angle,Right Elbow Angle,Left Knee Angle,Right Knee Angle\n";
 }
 
 // Display body and angle information from frame
-void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& frame_count) {
+void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& frame_count, std::chrono::high_resolution_clock::time_point& startTime) {
     size_t num_bodies = k4abt_frame_get_num_bodies(bodyFrame);
     frame_count++;
+    auto stopTime = std::chrono::high_resolution_clock::now();
+
+    if(frame_count == 1) {
+        startTime = stopTime;
+    }
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stopTime - startTime);
+    startTime = std::chrono::high_resolution_clock::now();
+    long long durationCount = duration.count();
 
     printf("%zu bodies are detected on frame %d\n", num_bodies, frame_count);
+    printf("%lld ms since last frame\n", durationCount);
 
     // Add empty line to CSV file if no bodies are detected
     if(num_bodies == 0) {
-        outputFile << ",,,," << std::endl;
+        outputFile << durationCount << ",,,,," << std::endl;
     }
 
     // Get info for each detected body
@@ -142,7 +152,7 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& fram
         k4abt_skeleton_t skeleton;
         k4abt_frame_get_body_skeleton(bodyFrame, i, &skeleton);
 
-        getJointAngles(id, skeleton, outputFile);
+        getJointAngles(id, skeleton, outputFile, durationCount);
     }
 }
 
@@ -363,6 +373,7 @@ void PlayFile(InputSettings inputSettings) {
     initOutputFile(outputFile, inputSettings.OutputFileName);
 
     int frame_count = 0;
+    auto startTime = std::chrono::high_resolution_clock::now();
 
     while (result == K4A_STREAM_RESULT_SUCCEEDED)
     {
@@ -395,7 +406,7 @@ void PlayFile(InputSettings inputSettings) {
             if (pop_frame_result == K4A_WAIT_RESULT_SUCCEEDED)
             {
                 /************* Successfully get a body tracking result, process the result here ***************/
-                processFrame(bodyFrame, outputFile, frame_count);
+                processFrame(bodyFrame, outputFile, frame_count, startTime);
 
                 VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
                 //Release the bodyFrame
@@ -460,6 +471,7 @@ void PlayFromDevice(InputSettings inputSettings) {
     initOutputFile(outputFile, inputSettings.OutputFileName);
 
     int frame_count = 0;
+    auto startTime = std::chrono::high_resolution_clock::now();
 
     while (s_isRunning)
     {
@@ -493,7 +505,7 @@ void PlayFromDevice(InputSettings inputSettings) {
         if (popFrameResult == K4A_WAIT_RESULT_SUCCEEDED)
         {
             /************* Successfully get a body tracking result, process the result here ***************/
-            processFrame(bodyFrame, outputFile, frame_count);
+            processFrame(bodyFrame, outputFile, frame_count, startTime);
 
             VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
             //Release the bodyFrame
