@@ -134,7 +134,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>libs/azure_kinect_sample_helper_includes;libs/azure_kinect_sample_helper_libs/window_controller_3d;libs/imgui;libs/gl3w</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs/azure_kinect_sample_helper_includes;libs/azure_kinect_sample_helper_libs/window_controller_3d;libs/imgui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -149,7 +149,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="3DViewer.cpp" />
-    <ClCompile Include="libs\gl3w\GL\gl3w.c" />
     <ClCompile Include="libs\imgui\imgui.cpp" />
     <ClCompile Include="libs\imgui\imgui_demo.cpp" />
     <ClCompile Include="libs\imgui\imgui_draw.cpp" />
@@ -164,8 +163,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="3DViewer.h" />
-    <ClInclude Include="libs\gl3w\GL\gl3w.h" />
-    <ClInclude Include="libs\gl3w\GL\glcorearb.h" />
     <ClInclude Include="libs\imgui\imconfig.h" />
     <ClInclude Include="libs\imgui\imgui.h" />
     <ClInclude Include="libs\imgui\imgui_impl_glfw.h" />
