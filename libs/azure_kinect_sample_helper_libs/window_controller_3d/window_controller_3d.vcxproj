@@ -45,12 +45,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)\build\bin\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\build\temp\$(Configuration)\$(MSBuildProjectName)\</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\..\..\extern\glfw\include;..\..\..\extern\azure_kinect_sdk\include;..\..\..\..\sdk\include;..\..\sample_helper_includes;</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\..\..\extern\glfw\include;..\..\..\extern\azure_kinect_sdk\include;..\..\..\..\sdk\include;..\..\azure_kinect_sample_helper_includes;</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)\build\bin\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\build\temp\$(Configuration)\$(MSBuildProjectName)\</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\..\..\extern\glfw\include;..\..\..\extern\azure_kinect_sdk\include;..\..\..\..\sdk\include;..\..\sample_helper_includes;</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);..\..\..\extern\glfw\include;..\..\..\extern\azure_kinect_sdk\include;..\..\..\..\sdk\include;..\..\azure_kinect_sample_helper_includes;</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
