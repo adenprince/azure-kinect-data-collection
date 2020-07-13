@@ -19,6 +19,12 @@
     <Filter Include="Header Files\imgui">
       <UniqueIdentifier>{dafefa17-ef54-496c-a669-8d175865ea8a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\gl3w">
+      <UniqueIdentifier>{4d84e2c4-c597-4a3b-af9e-06fcde0dffa8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\gl3w">
+      <UniqueIdentifier>{4a0cf036-07fd-45db-a90b-520803080d91}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)..\..\content\**\*.*" />
@@ -65,6 +71,9 @@
     <ClCompile Include="libs\imgui\imgui_widgets.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="libs\gl3w\GL\gl3w.c">
+      <Filter>Source Files\gl3w</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vec.h">
@@ -96,6 +105,12 @@
     </ClInclude>
     <ClInclude Include="libs\imgui\imstb_truetype.h">
       <Filter>Header Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\gl3w\GL\gl3w.h">
+      <Filter>Header Files\gl3w</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\gl3w\GL\glcorearb.h">
+      <Filter>Header Files\gl3w</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
