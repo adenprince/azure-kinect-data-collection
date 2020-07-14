@@ -1,12 +1,5 @@
-// This file was made using sample code obtained from: https://docs.microsoft.com/en-us/azure/kinect-dk/build-first-body-app
+// This file was made using sample code obtained from: https://github.com/microsoft/Azure-Kinect-Samples/blob/master/body-tracking-samples/simple_3d_viewer/main.cpp
 
-#include <fstream>
-#include <iostream>
-#include <string>
-
-#include <k4abt.h>
-
-#include "vec.h"
 #include "3DViewer.h"
 
 
