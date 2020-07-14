@@ -1,6 +1,7 @@
 // This file was made using sample code obtained from: https://github.com/microsoft/Azure-Kinect-Samples/blob/master/body-tracking-samples/simple_3d_viewer/main.cpp
 
 #include "3DViewer.h"
+#include "imgui_dx11.h"
 
 void PrintUsage()
 {
@@ -97,11 +98,16 @@ void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, std::ofstream& outp
                                               skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position);
 
     // Print joint angles and write them to a file
-    printf("ID: %d\n", id);
+    /*printf("ID: %d\n", id);
     printf("Left elbow angle: %f\n", leftElbowAngle);
     printf("Right elbow angle: %f\n", rightElbowAngle);
     printf("Left knee angle: %f\n", leftKneeAngle);
-    printf("Right knee angle: %f\n", rightKneeAngle);
+    printf("Right knee angle: %f\n", rightKneeAngle);*/
+
+    ImGui::Text("  Left elbow angle: %f\n", leftElbowAngle);
+    ImGui::Text("  Right elbow angle: %f\n", rightElbowAngle);
+    ImGui::Text("  Left knee angle: %f\n", leftKneeAngle);
+    ImGui::Text("  Right knee angle: %f\n", rightKneeAngle);
 
     outputFile << durationCount << "," << id << ","
                << leftElbowAngle << "," << rightElbowAngle << ","
@@ -138,8 +144,14 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& fram
     startTime = std::chrono::high_resolution_clock::now();
     long long durationCount = duration.count();
 
-    printf("%zu bodies are detected on frame %d\n", num_bodies, frame_count);
-    printf("%lld ms since last frame\n", durationCount);
+    // printf("%zu bodies are detected on frame %d\n", num_bodies, frame_count);
+    // printf("%lld ms since last frame\n", durationCount);
+
+    // Start ImGui window
+    ImGui::Begin("Data", (bool*) 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+    ImGui::Text("Bodies detected: %zu", num_bodies);
+    ImGui::Text("Frame: %d", frame_count);
+    ImGui::Text("Time since last frame: %lld", durationCount);
 
     // Add empty line to CSV file if no bodies are detected
     if(num_bodies == 0) {
@@ -152,10 +164,12 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& fram
         k4abt_skeleton_t skeleton;
         k4abt_frame_get_body_skeleton(bodyFrame, i, &skeleton);
 
+        ImGui::Text("Body %d:", id);
         getJointAngles(id, skeleton, outputFile, durationCount);
     }
-}
 
+    ImGui::End();
+}
 
 int64_t ProcessKey(void* /*context*/, int key)
 {
@@ -372,11 +386,71 @@ void PlayFile(InputSettings inputSettings) {
     std::ofstream outputFile;
     initOutputFile(outputFile, inputSettings.OutputFileName);
 
+    // Create application window
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Azure Kinect Data"), NULL };
+    ::RegisterClassEx(&wc);
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Azure Kinect Data"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
+
+    // Initialize Direct3D
+    if (!CreateDeviceD3D(hwnd))
+    {
+        CleanupDeviceD3D();
+        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+        exit(1);
+    }
+
+    // Show the window
+    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
+    ::UpdateWindow(hwnd);
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+
+    // Setup Platform/Renderer bindings
+    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+    // Our state
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    // Scale font
+    ImGui::GetStyle().ScaleAllSizes(1.5f);
+    ImFontConfig fontConfig;
+    constexpr float defaultFontSize = 13.0f;
+    fontConfig.SizePixels = defaultFontSize * 1.5f;
+    ImGui::GetIO().Fonts->AddFontDefault(&fontConfig);
+
     int frame_count = 0;
     auto startTime = std::chrono::high_resolution_clock::now();
 
+
+    // Main loop
+    MSG msg;
+    ZeroMemory(&msg, sizeof(msg));
     while (result == K4A_STREAM_RESULT_SUCCEEDED)
     {
+        bool frameProcessed = false;
+        if (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
+        {
+            ::TranslateMessage(&msg);
+            ::DispatchMessage(&msg);
+            continue;
+        }
+
+        // Start the Dear ImGui frame
+        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        // Make frame take up the entire window
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(io.DisplaySize);
+
         result = k4a_playback_get_next_capture(playback_handle, &capture);
         // check to make sure we have a depth image
         // if we are not at the end of the file
@@ -411,6 +485,8 @@ void PlayFile(InputSettings inputSettings) {
                 VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
                 //Release the bodyFrame
                 k4abt_frame_release(bodyFrame);
+
+                frameProcessed = true;
             }
             else
             {
@@ -418,6 +494,17 @@ void PlayFile(InputSettings inputSettings) {
                 break;
             }
 
+        }
+
+        // Render GUI when the 3D viewer window has updated
+        if (frameProcessed) {
+            ImGui::Render();
+            g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
+            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_color);
+            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+            g_pSwapChain->Present(1, 0); // Present with vsync
+            //g_pSwapChain->Present(0, 0); // Present without vsync
         }
 
         window3d.SetLayout3d(s_layoutMode);
@@ -437,6 +524,15 @@ void PlayFile(InputSettings inputSettings) {
     k4a_playback_close(playback_handle);
     
     outputFile.close();
+
+    // ImGui Cleanup
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+
+    CleanupDeviceD3D();
+    ::DestroyWindow(hwnd);
+    ::UnregisterClass(wc.lpszClassName, wc.hInstance);
 }
 
 void PlayFromDevice(InputSettings inputSettings) {
@@ -470,11 +566,71 @@ void PlayFromDevice(InputSettings inputSettings) {
     std::ofstream outputFile;
     initOutputFile(outputFile, inputSettings.OutputFileName);
 
+    // Create application window
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Azure Kinect Data"), NULL };
+    ::RegisterClassEx(&wc);
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Azure Kinect Data"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
+
+    // Initialize Direct3D
+    if (!CreateDeviceD3D(hwnd))
+    {
+        CleanupDeviceD3D();
+        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+        exit(1);
+    }
+
+    // Show the window
+    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
+    ::UpdateWindow(hwnd);
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+
+    // Setup Platform/Renderer bindings
+    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+    // Our state
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    // Scale font
+    ImGui::GetStyle().ScaleAllSizes(1.5f);
+    ImFontConfig fontConfig;
+    constexpr float defaultFontSize = 13.0f;
+    fontConfig.SizePixels = defaultFontSize * 1.5f;
+    ImGui::GetIO().Fonts->AddFontDefault(&fontConfig);
+
     int frame_count = 0;
     auto startTime = std::chrono::high_resolution_clock::now();
 
+
+    // Main loop
+    MSG msg;
+    ZeroMemory(&msg, sizeof(msg));
     while (s_isRunning)
     {
+        bool frameProcessed = false;
+        if (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
+        {
+            ::TranslateMessage(&msg);
+            ::DispatchMessage(&msg);
+            continue;
+        }
+
+        // Start the Dear ImGui frame
+        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        // Make frame take up the entire window
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(io.DisplaySize);
+        
         k4a_capture_t sensorCapture = nullptr;
         k4a_wait_result_t getCaptureResult = k4a_device_get_capture(device, &sensorCapture, 0); // timeout_in_ms is set to 0
 
@@ -510,6 +666,19 @@ void PlayFromDevice(InputSettings inputSettings) {
             VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
             //Release the bodyFrame
             k4abt_frame_release(bodyFrame);
+
+            frameProcessed = true;
+        }
+
+        // Render GUI when the 3D viewer window has updated
+        if (frameProcessed) {
+            ImGui::Render();
+            g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
+            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_color);
+            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+            g_pSwapChain->Present(1, 0); // Present with vsync
+            //g_pSwapChain->Present(0, 0); // Present without vsync
         }
 
         window3d.SetLayout3d(s_layoutMode);
@@ -527,4 +696,96 @@ void PlayFromDevice(InputSettings inputSettings) {
     k4a_device_close(device);
 
     outputFile.close();
+    
+    // ImGui Cleanup
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+
+    CleanupDeviceD3D();
+    ::DestroyWindow(hwnd);
+    ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+}
+
+// ImGui helper functions
+
+bool CreateDeviceD3D(HWND hWnd)
+{
+    // Setup swap chain
+    DXGI_SWAP_CHAIN_DESC sd;
+    ZeroMemory(&sd, sizeof(sd));
+    sd.BufferCount = 2;
+    sd.BufferDesc.Width = 0;
+    sd.BufferDesc.Height = 0;
+    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.BufferDesc.RefreshRate.Numerator = 60;
+    sd.BufferDesc.RefreshRate.Denominator = 1;
+    sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    sd.OutputWindow = hWnd;
+    sd.SampleDesc.Count = 1;
+    sd.SampleDesc.Quality = 0;
+    sd.Windowed = TRUE;
+    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+
+    UINT createDeviceFlags = 0;
+    //createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+    D3D_FEATURE_LEVEL featureLevel;
+    const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
+    if (D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
+        return false;
+
+    CreateRenderTarget();
+    return true;
+}
+
+void CleanupDeviceD3D()
+{
+    CleanupRenderTarget();
+    if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = NULL; }
+    if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = NULL; }
+    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
+}
+
+void CreateRenderTarget()
+{
+    ID3D11Texture2D* pBackBuffer;
+    g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
+    g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &g_mainRenderTargetView);
+    pBackBuffer->Release();
+}
+
+void CleanupRenderTarget()
+{
+    if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = NULL; }
+}
+
+// Forward declare message handler from imgui_impl_win32.cpp
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+// Win32 message handler
+LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+        return true;
+
+    switch (msg)
+    {
+    case WM_SIZE:
+        if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
+        {
+            CleanupRenderTarget();
+            g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
+            CreateRenderTarget();
+        }
+        return 0;
+    case WM_SYSCOMMAND:
+        if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
+            return 0;
+        break;
+    case WM_DESTROY:
+        ::PostQuitMessage(0);
+        return 0;
+    }
+    return ::DefWindowProc(hWnd, msg, wParam, lParam);
 }
