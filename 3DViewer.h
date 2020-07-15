@@ -32,3 +32,4 @@ void PrintUsage();
 bool ParseInputSettingsFromArg(int argc, char** argv, InputSettings& inputSettings);
 void PlayFile(InputSettings inputSettings);
 void PlayFromDevice(InputSettings inputSettings);
+int runStartupGUI(InputSettings& is);

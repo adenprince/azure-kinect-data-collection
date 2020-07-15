@@ -42,7 +42,6 @@ bool s_isRunning = true;
 Visualization::Layout3d s_layoutMode = Visualization::Layout3d::OnlyMainView;
 bool s_visualizeJointFrame = false;
 
-
 // Check if a file exists with the passed filename
 bool fileExists(std::string filename) {
     std::ifstream inputFile;
@@ -97,17 +96,18 @@ void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, std::ofstream& outp
                                               skeleton.joints[K4ABT_JOINT_KNEE_RIGHT].position,
                                               skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position);
 
-    // Print joint angles and write them to a file
+    // Display joint angles and write them to a file
     /*printf("ID: %d\n", id);
     printf("Left elbow angle: %f\n", leftElbowAngle);
     printf("Right elbow angle: %f\n", rightElbowAngle);
     printf("Left knee angle: %f\n", leftKneeAngle);
     printf("Right knee angle: %f\n", rightKneeAngle);*/
 
-    ImGui::Text("  Left elbow angle: %f\n", leftElbowAngle);
-    ImGui::Text("  Right elbow angle: %f\n", rightElbowAngle);
-    ImGui::Text("  Left knee angle: %f\n", leftKneeAngle);
-    ImGui::Text("  Right knee angle: %f\n", rightKneeAngle);
+    
+    ImGui::Text(u8"  Left elbow angle: %f°\n", leftElbowAngle);
+    ImGui::Text(u8"  Right elbow angle: %f°\n", rightElbowAngle);
+    ImGui::Text(u8"  Left knee angle: %f°\n", leftKneeAngle);
+    ImGui::Text(u8"  Right knee angle: %f°\n", rightKneeAngle);
 
     outputFile << durationCount << "," << id << ","
                << leftElbowAngle << "," << rightElbowAngle << ","
@@ -151,7 +151,7 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& fram
     ImGui::Begin("Data", (bool*) 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
     ImGui::Text("Bodies detected: %zu", num_bodies);
     ImGui::Text("Frame: %d", frame_count);
-    ImGui::Text("Time since last frame: %lld", durationCount);
+    ImGui::Text("Time since last frame: %lld ms", durationCount);
 
     // Add empty line to CSV file if no bodies are detected
     if(num_bodies == 0) {
@@ -164,11 +164,171 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& fram
         k4abt_skeleton_t skeleton;
         k4abt_frame_get_body_skeleton(bodyFrame, i, &skeleton);
 
+        ImGui::Separator();
         ImGui::Text("Body %d:", id);
         getJointAngles(id, skeleton, outputFile, durationCount);
     }
 
     ImGui::End();
+}
+
+// Create and handle startup GUI widgets
+int startupGUIWidgets(InputSettings& inputSettings) {
+    int startProgram = 0;
+    const char* items[] = { "NFOV_UNBINNED", "WFOV_BINNED" };
+    static int depth_camera_mode = 0;
+    ImGui::Combo("Depth camera mode", &depth_camera_mode, items, IM_ARRAYSIZE(items));
+
+    static bool cpu_mode = false;
+    ImGui::Checkbox("CPU mode", &cpu_mode);
+
+    static bool offline_mode = false;
+    ImGui::Checkbox("Collect data from file", &offline_mode);
+
+    static char str1[128] = "";
+    ImGui::InputText("Input filename", str1, IM_ARRAYSIZE(str1));
+
+    static char str2[128] = "";
+    ImGui::InputText("Output filename", str2, IM_ARRAYSIZE(str2));
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(ImColor::HSV(0.4f, 0.6f, 0.6f)));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(ImColor::HSV(0.4f, 0.7f, 0.7f)));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(ImColor::HSV(0.4f, 0.8f, 0.8f)));
+
+    if(ImGui::Button("Start")) {
+        inputSettings.CpuOnlyMode = cpu_mode;
+        inputSettings.Offline = offline_mode;
+        inputSettings.FileName = str1;
+        inputSettings.OutputFileName = str2;
+
+        if(depth_camera_mode == 1) {
+            inputSettings.DepthCameraMode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
+        }
+
+        startProgram = 1;
+    }
+
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(ImColor::HSV(0.0f, 0.6f, 0.6f)));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(ImColor::HSV(0.0f, 0.7f, 0.7f)));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(ImColor::HSV(0.0f, 0.8f, 0.8f)));
+
+    if(ImGui::Button("Quit")) {
+        startProgram = -1;
+    }
+
+    ImGui::PopStyleColor(3);
+
+    return startProgram;
+}
+
+// Begin and handle startup GUI
+int runStartupGUI(InputSettings& inputSettings) {
+    // Become 1 when data collection should run, or -1 when program should quit
+    int startProgram = 0;
+
+    // Correct font scaling
+    if (!glfwInit())
+    {
+        exit(EXIT_FAILURE);
+    }
+
+    // Create application window
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Program Settings"), NULL };
+    ::RegisterClassEx(&wc);
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Program Settings"), WS_OVERLAPPEDWINDOW, 100, 100, 640, 480, NULL, NULL, wc.hInstance, NULL);
+
+    // Initialize Direct3D
+    if (!CreateDeviceD3D(hwnd))
+    {
+        CleanupDeviceD3D();
+        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+        return 1;
+    }
+
+    // Show the window
+    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
+    ::UpdateWindow(hwnd);
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+
+    // Setup Platform/Renderer bindings
+    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+    // Our state
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    // Scale font
+    ImGui::GetStyle().ScaleAllSizes(1.5f);
+    ImFontConfig fontConfig;
+    constexpr float defaultFontSize = 13.0f;
+    fontConfig.SizePixels = defaultFontSize * 1.5f;
+    ImGui::GetIO().Fonts->AddFontDefault(&fontConfig);
+
+    // Main loop
+    MSG msg;
+    ZeroMemory(&msg, sizeof(msg));
+    while (msg.message != WM_QUIT && startProgram == 0)
+    {
+        if (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
+        {
+            ::TranslateMessage(&msg);
+            ::DispatchMessage(&msg);
+            continue;
+        }
+
+        // Start the Dear ImGui frame
+        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(io.DisplaySize);
+
+        ImGui::Begin("Settings", (bool*) 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+        startProgram = startupGUIWidgets(inputSettings);
+        ImGui::End();
+
+        // Rendering
+        ImGui::Render();
+        g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
+        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*) &clear_color);
+        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+        g_pSwapChain->Present(1, 0); // Present with vsync
+        //g_pSwapChain->Present(0, 0); // Present without vsync
+    }
+
+    // Cleanup
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+
+    CleanupDeviceD3D();
+    ::DestroyWindow(hwnd);
+    ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+    
+    if (startProgram == -1 || msg.message == WM_QUIT)
+    {
+        return -1;
+    }
+
+    if (inputSettings.OutputFileName == "")
+    {
+        inputSettings.OutputFileName = "output" + std::to_string(getFilenameIndex()) + ".csv";
+    }
+
+    return 0;
 }
 
 int64_t ProcessKey(void* /*context*/, int key)
@@ -389,7 +549,7 @@ void PlayFile(InputSettings inputSettings) {
     // Create application window
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Azure Kinect Data"), NULL };
     ::RegisterClassEx(&wc);
-    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Azure Kinect Data"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Azure Kinect Data"), WS_OVERLAPPEDWINDOW, 100, 100, 480, 640, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -500,7 +660,7 @@ void PlayFile(InputSettings inputSettings) {
         if (frameProcessed) {
             ImGui::Render();
             g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
-            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_color);
+            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*) &clear_color);
             ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
             g_pSwapChain->Present(1, 0); // Present with vsync
@@ -569,7 +729,7 @@ void PlayFromDevice(InputSettings inputSettings) {
     // Create application window
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Azure Kinect Data"), NULL };
     ::RegisterClassEx(&wc);
-    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Azure Kinect Data"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Azure Kinect Data"), WS_OVERLAPPEDWINDOW, 100, 100, 640, 480, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -607,7 +767,6 @@ void PlayFromDevice(InputSettings inputSettings) {
 
     int frame_count = 0;
     auto startTime = std::chrono::high_resolution_clock::now();
-
 
     // Main loop
     MSG msg;
@@ -674,7 +833,7 @@ void PlayFromDevice(InputSettings inputSettings) {
         if (frameProcessed) {
             ImGui::Render();
             g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
-            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_color);
+            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*) &clear_color);
             ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
             g_pSwapChain->Present(1, 0); // Present with vsync

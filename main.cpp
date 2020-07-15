@@ -2,8 +2,6 @@
 
 #include "3DViewer.h"
 
-
-
 #define VERIFY(result, error)                                                                            \
     if(result != K4A_RESULT_SUCCEEDED) {                                                                 \
         printf("%s \n - (File: %s, Function: %s, Line: %d)\n", error, __FILE__, __FUNCTION__, __LINE__); \
@@ -15,16 +13,18 @@ using namespace std;
 int main(int argc, char* argv[]) {
     InputSettings inputSettings;
 
-    if (ParseInputSettingsFromArg(argc, argv, inputSettings)) {
+    // Runs startup GUI if there are no command line arguments
+    if((argc > 1 && ParseInputSettingsFromArg(argc, argv, inputSettings)) ||
+       (argc == 1 && runStartupGUI(inputSettings) == 0)) {
         // Either play the offline file or play from the device
-        if (inputSettings.Offline == true) {
+        if(inputSettings.Offline == true) {
             PlayFile(inputSettings);
         }
         else {
             PlayFromDevice(inputSettings);
         }
     }
-    else {
+    else if(argc > 1) {
         // Print app usage if user entered incorrect arguments.
         PrintUsage();
         return -1;
