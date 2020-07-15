@@ -173,8 +173,9 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& fram
 }
 
 // Create and handle startup GUI widgets
-int startupGUIWidgets(InputSettings& inputSettings) {
+int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
     int startProgram = 0;
+
     const char* items[] = { "NFOV_UNBINNED", "WFOV_BINNED" };
     static int depth_camera_mode = 0;
     ImGui::Combo("Depth camera mode", &depth_camera_mode, items, IM_ARRAYSIZE(items));
@@ -196,6 +197,9 @@ int startupGUIWidgets(InputSettings& inputSettings) {
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(ImColor::HSV(0.4f, 0.8f, 0.8f)));
 
     if(ImGui::Button("Start")) {
+        // Reset error text
+        errorText = "";
+
         inputSettings.CpuOnlyMode = cpu_mode;
         inputSettings.Offline = offline_mode;
         inputSettings.FileName = str1;
@@ -206,6 +210,17 @@ int startupGUIWidgets(InputSettings& inputSettings) {
         }
 
         startProgram = 1;
+
+        // Check for errors
+        if (inputSettings.FileName != "" && fileExists(inputSettings.FileName) == false) {
+            errorText += "ERROR: Input file \"" + inputSettings.FileName + "\" does not exist\n";
+            startProgram = 0;
+        }
+
+        if(fileExists(inputSettings.OutputFileName)) {
+            errorText += "ERROR: Output file \"" + inputSettings.OutputFileName + "\" already exists\n";
+            startProgram = 0;
+        }
     }
 
     ImGui::PopStyleColor(3);
@@ -222,6 +237,8 @@ int startupGUIWidgets(InputSettings& inputSettings) {
 
     ImGui::PopStyleColor(3);
 
+    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.0f, 1.0f), errorText.c_str());
+
     return startProgram;
 }
 
@@ -229,6 +246,8 @@ int startupGUIWidgets(InputSettings& inputSettings) {
 int runStartupGUI(InputSettings& inputSettings) {
     // Become 1 when data collection should run, or -1 when program should quit
     int startProgram = 0;
+    
+    std::string errorText = "";
 
     // Correct font scaling
     if (!glfwInit())
@@ -296,7 +315,7 @@ int runStartupGUI(InputSettings& inputSettings) {
         ImGui::SetNextWindowSize(io.DisplaySize);
 
         ImGui::Begin("Settings", (bool*) 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
-        startProgram = startupGUIWidgets(inputSettings);
+        startProgram = startupGUIWidgets(inputSettings, errorText);
         ImGui::End();
 
         // Rendering
