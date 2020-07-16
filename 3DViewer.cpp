@@ -212,7 +212,7 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
         startProgram = 1;
 
         // Check for errors
-        if (inputSettings.FileName != "" && fileExists(inputSettings.FileName) == false) {
+        if(inputSettings.FileName != "" && fileExists(inputSettings.FileName) == false) {
             errorText += "ERROR: Input file \"" + inputSettings.FileName + "\" does not exist\n";
             startProgram = 0;
         }
@@ -346,6 +346,9 @@ int runStartupGUI(InputSettings& inputSettings) {
     {
         inputSettings.OutputFileName = "output" + std::to_string(getFilenameIndex()) + ".csv";
     }
+
+    // Empty message queue
+    while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE) != 0) {}
 
     return 0;
 }
@@ -614,6 +617,7 @@ void PlayFile(InputSettings inputSettings) {
     while (result == K4A_STREAM_RESULT_SUCCEEDED)
     {
         bool frameProcessed = false;
+
         if (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
         {
             ::TranslateMessage(&msg);
@@ -676,7 +680,8 @@ void PlayFile(InputSettings inputSettings) {
         }
 
         // Render GUI when the 3D viewer window has updated
-        if (frameProcessed) {
+        if (frameProcessed)
+        {
             ImGui::Render();
             g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
             g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*) &clear_color);
@@ -793,6 +798,7 @@ void PlayFromDevice(InputSettings inputSettings) {
     while (s_isRunning)
     {
         bool frameProcessed = false;
+
         if (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
         {
             ::TranslateMessage(&msg);
@@ -823,13 +829,17 @@ void PlayFromDevice(InputSettings inputSettings) {
 
             if (queueCaptureResult == K4A_WAIT_RESULT_FAILED)
             {
-                std::cout << "Error! Add capture to tracker process queue failed!" << std::endl;
+                std::string errorText = "Error! Add capture to tracker process queue failed!";
+                std::cout << errorText << std::endl;
+                MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
                 break;
             }
         }
         else if (getCaptureResult != K4A_WAIT_RESULT_TIMEOUT)
         {
-            std::cout << "Get depth capture returned error: " << getCaptureResult << std::endl;
+            std::string errorText = "Get depth capture returned error";
+            std::cout << errorText << ": " << getCaptureResult << std::endl;
+            MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
             break;
         }
 
@@ -849,7 +859,8 @@ void PlayFromDevice(InputSettings inputSettings) {
         }
 
         // Render GUI when the 3D viewer window has updated
-        if (frameProcessed) {
+        if (frameProcessed)
+        {
             ImGui::Render();
             g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
             g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*) &clear_color);

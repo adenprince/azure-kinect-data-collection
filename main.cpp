@@ -2,12 +2,6 @@
 
 #include "3DViewer.h"
 
-#define VERIFY(result, error)                                                                            \
-    if(result != K4A_RESULT_SUCCEEDED) {                                                                 \
-        printf("%s \n - (File: %s, Function: %s, Line: %d)\n", error, __FILE__, __FUNCTION__, __LINE__); \
-        exit(1);                                                                                         \
-    }                                                                                                    \
-
 using namespace std;
 
 int main(int argc, char* argv[]) {
