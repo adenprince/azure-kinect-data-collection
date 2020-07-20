@@ -8,10 +8,13 @@
 #include <tchar.h>
 
 // Data
-static ID3D11Device* g_pd3dDevice = NULL;
-static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
-static IDXGISwapChain* g_pSwapChain = NULL;
-static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
+extern ID3D11Device* g_pd3dDevice;
+extern ID3D11DeviceContext* g_pd3dDeviceContext;
+extern IDXGISwapChain* g_pSwapChain;
+extern ID3D11RenderTargetView* g_mainRenderTargetView;
+
+// Forward declare message handler from imgui_impl_win32.cpp
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);

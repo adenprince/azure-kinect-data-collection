@@ -110,6 +110,10 @@
     <ClInclude Include="WindowController3dTypes.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\packages\Microsoft.Azure.Kinect.BodyTracking.1.0.0\content\dnn_model_2_0.onnx">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="dnn_model_2_0.onnx" />
     <None Include="packages.config" />
   </ItemGroup>
