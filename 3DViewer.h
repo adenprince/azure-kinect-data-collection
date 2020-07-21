@@ -17,6 +17,9 @@
 #include <Utilities.h>
 #include <Window3dWrapper.h>
 
+#include "imgui_dx11.h"
+#include "imgui_internal.h"
+
 #include "vec.h"
 
 struct InputSettings

@@ -1,7 +1,6 @@
 // This file was made using sample code obtained from: https://github.com/microsoft/Azure-Kinect-Samples/blob/master/body-tracking-samples/simple_3d_viewer/main.cpp
 
 #include "3DViewer.h"
-#include "imgui_dx11.h"
 
 void PrintUsage()
 {
@@ -97,13 +96,6 @@ void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, std::ofstream& outp
                                               skeleton.joints[K4ABT_JOINT_ANKLE_RIGHT].position);
 
     // Display joint angles and write them to a file
-    /*printf("ID: %d\n", id);
-    printf("Left elbow angle: %f\n", leftElbowAngle);
-    printf("Right elbow angle: %f\n", rightElbowAngle);
-    printf("Left knee angle: %f\n", leftKneeAngle);
-    printf("Right knee angle: %f\n", rightKneeAngle);*/
-
-    
     ImGui::Text(u8"  Left elbow angle: %f°\n", leftElbowAngle);
     ImGui::Text(u8"  Right elbow angle: %f°\n", rightElbowAngle);
     ImGui::Text(u8"  Left knee angle: %f°\n", leftKneeAngle);
@@ -144,9 +136,6 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& fram
     startTime = std::chrono::high_resolution_clock::now();
     long long durationCount = duration.count();
 
-    // printf("%zu bodies are detected on frame %d\n", num_bodies, frame_count);
-    // printf("%lld ms since last frame\n", durationCount);
-
     // Start ImGui window
     ImGui::Begin("Data", (bool*) 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
     ImGui::Text("Bodies detected: %zu", num_bodies);
@@ -178,19 +167,36 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
 
     const char* items[] = { "NFOV_UNBINNED", "WFOV_BINNED" };
     static int depth_camera_mode = 0;
-    ImGui::Combo("Depth camera mode", &depth_camera_mode, items, IM_ARRAYSIZE(items));
-
     static bool cpu_mode = false;
-    ImGui::Checkbox("CPU mode", &cpu_mode);
-
     static bool offline_mode = false;
+    static char input_filename[128] = "";
+    static char output_filename[128] = "";
+
+    ImGui::Combo("Depth camera mode", &depth_camera_mode, items, IM_ARRAYSIZE(items));  
+    ImGui::Checkbox("CPU mode", &cpu_mode);
     ImGui::Checkbox("Collect data from file", &offline_mode);
 
-    static char str1[128] = "";
-    ImGui::InputText("Input filename", str1, IM_ARRAYSIZE(str1));
+    // Disable input filename text input if not collecting data from file
+    if(offline_mode == false) {
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    }
+    ImGui::InputText("Input filename", input_filename, IM_ARRAYSIZE(input_filename));
+    if(offline_mode == false) {
+        ImGui::PopItemFlag();
+        ImGui::PopStyleVar();
+    }
 
-    static char str2[128] = "";
-    ImGui::InputText("Output filename", str2, IM_ARRAYSIZE(str2));
+    // Check if the output filename in input settings and the text input do not match
+    if(strcmp(output_filename, inputSettings.OutputFileName.c_str()) != 0) {
+        // Copy the default output filename to the GUI once
+        strcpy_s(output_filename, inputSettings.OutputFileName.c_str());
+    }
+
+    ImGui::InputText("Output filename", output_filename, IM_ARRAYSIZE(output_filename));
+
+    // Update output filename in input settings
+    inputSettings.OutputFileName = output_filename;
 
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(ImColor::HSV(0.4f, 0.6f, 0.6f)));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(ImColor::HSV(0.4f, 0.7f, 0.7f)));
@@ -202,8 +208,7 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
 
         inputSettings.CpuOnlyMode = cpu_mode;
         inputSettings.Offline = offline_mode;
-        inputSettings.FileName = str1;
-        inputSettings.OutputFileName = str2;
+        inputSettings.FileName = input_filename;
 
         if(depth_camera_mode == 1) {
             inputSettings.DepthCameraMode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
@@ -212,8 +217,14 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
         startProgram = 1;
 
         // Check for errors
-        if(inputSettings.FileName != "" && fileExists(inputSettings.FileName) == false) {
+        if(offline_mode && fileExists(inputSettings.FileName) == false) {
             errorText += "ERROR: Input file \"" + inputSettings.FileName + "\" does not exist\n";
+            startProgram = 0;
+        }
+
+        // Check if there are no non-space characters
+        if(inputSettings.OutputFileName.find_first_not_of(' ') == std::string::npos) {
+            errorText += "ERROR: Output filename is empty\n";
             startProgram = 0;
         }
 
@@ -222,8 +233,6 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
             startProgram = 0;
         }
     }
-
-    ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
 
@@ -235,9 +244,10 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
         startProgram = -1;
     }
 
-    ImGui::PopStyleColor(3);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.0f, 1.0f));
+    ImGui::TextWrapped(errorText.c_str());
 
-    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.0f, 1.0f), errorText.c_str());
+    ImGui::PopStyleColor(7);
 
     return startProgram;
 }
@@ -248,6 +258,8 @@ int runStartupGUI(InputSettings& inputSettings) {
     int startProgram = 0;
     
     std::string errorText = "";
+
+    inputSettings.OutputFileName = "output" + std::to_string(getFilenameIndex()) + ".csv";
 
     // Correct font scaling
     if (!glfwInit())
@@ -337,14 +349,9 @@ int runStartupGUI(InputSettings& inputSettings) {
     ::DestroyWindow(hwnd);
     ::UnregisterClass(wc.lpszClassName, wc.hInstance);
     
-    if (startProgram == -1 || msg.message == WM_QUIT)
+    if (msg.message == WM_QUIT || startProgram == -1)
     {
         return -1;
-    }
-
-    if (inputSettings.OutputFileName == "")
-    {
-        inputSettings.OutputFileName = "output" + std::to_string(getFilenameIndex()) + ".csv";
     }
 
     // Empty message queue
