@@ -1,4 +1,10 @@
-#pragma once
+/* Aden Prince
+ * HiMER Lab at U. of Illinois, Chicago
+ * Azure Kinect Data Collection
+ * 
+ * vec.h
+ * Contains code that defines a vector type.
+ */
 
 #include <k4a/k4a.h>
 
