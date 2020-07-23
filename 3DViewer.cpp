@@ -11,6 +11,23 @@
  * Body tracking 3D viewer code obtained from: https://github.com/microsoft/Azure-Kinect-Samples/blob/master/body-tracking-samples/simple_3d_viewer/main.cpp
  */
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
+#include <fstream>
+#include <chrono>
+
+#include <k4arecord/playback.h>
+#include <k4a/k4a.h>
+
+#include <BodyTrackingHelpers.h>
+#include <Utilities.h>
+#include <Window3dWrapper.h>
+
+#include "imgui_dx11.h"
+#include "imgui_internal.h"
+
+#include "vec.h"
 #include "3DViewer.h"
 
 // Print command-line argument usage to the command line
@@ -63,22 +80,24 @@ bool fileExists(std::string filename) {
     return isOpen;
 }
 
-// Find the first unused indexed output filename
-int getFilenameIndex() {
+// Get the first unused indexed output filename
+std::string getIndexedFilename() {
     int fileIndex = 1;
+    std::string curFilename = "output1.csv";
 
     // Run until an unused indexed output filename is found or the file index is too high
-    while(fileExists("output" + std::to_string(fileIndex) + ".csv") && fileIndex < INT_MAX) {
+    while(fileExists(curFilename) && fileIndex < INT_MAX) {
         fileIndex++;
+        curFilename = "output" + std::to_string(fileIndex) + ".csv";
     }
 
     // Check if the maximum number of numbered output files has been reached
-    if(fileIndex == INT_MAX && fileExists("output" + std::to_string(fileIndex) + ".csv")) {
-        printf("Maximum number of output files used.\n");
+    if(fileIndex == INT_MAX && fileExists(curFilename)) {
+        printf("Maximum number of indexed output files used.\n");
         exit(1);
     }
 
-    return fileIndex;
+    return curFilename;
 }
 
 // Convert three passed points into an angle between the vectors p2 to p1 and p2 to p3
@@ -140,13 +159,13 @@ void initOutputFile(std::ofstream& outputFile, std::string& outputFileName) {
 }
 
 // Display body and angle information from frame
-void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& frame_count, std::chrono::high_resolution_clock::time_point& startTime) {
+void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& processed_frames, std::chrono::high_resolution_clock::time_point& startTime) {
     size_t num_bodies = k4abt_frame_get_num_bodies(bodyFrame);
-    frame_count++;
+    processed_frames++;
     auto stopTime = std::chrono::high_resolution_clock::now();
 
     // The first frame should be 0 ms from the previous frame
-    if(frame_count == 1) {
+    if(processed_frames == 1) {
         startTime = stopTime;
     }
 
@@ -157,7 +176,7 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& fram
     // Start ImGui window
     ImGui::Begin("Data", (bool*) 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
     ImGui::Text("Bodies detected: %zu", num_bodies);
-    ImGui::Text("Frame: %d", frame_count);
+    ImGui::Text("Frames processed: %d", processed_frames);
     ImGui::Text("Time since last frame: %lld ms", durationCount);
 
     // Add empty line to CSV file if no bodies are detected
@@ -275,32 +294,15 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
     return startCollection;
 }
 
-// Set input settings from a GUI
-int runStartupGUI(InputSettings& inputSettings) {
+// Initialize ImGui for DirectX 11
+void initImGui(WNDCLASSEX& wc, HWND& hwnd) {
     const float GUIScalingFactor = 1.5f;
-
-    // 0: Continue running startup GUI, 1: Start data collection, -1: Quit program
-    int startCollection = 0;
-    
-    std::string errorText = "";
-
-    inputSettings.OutputFileName = "output" + std::to_string(getFilenameIndex()) + ".csv";
-
-    // Correct font scaling
-    if(!glfwInit()) {
-        exit(EXIT_FAILURE);
-    }
-
-    // Create application window
-    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Program Settings"), NULL };
-    ::RegisterClassEx(&wc);
-    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Program Settings"), WS_OVERLAPPEDWINDOW, 100, 100, 640, 480, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     if(!CreateDeviceD3D(hwnd)) {
         CleanupDeviceD3D();
         ::UnregisterClass(wc.lpszClassName, wc.hInstance);
-        return 1;
+        exit(1);
     }
 
     // Show the window
@@ -310,7 +312,6 @@ int runStartupGUI(InputSettings& inputSettings) {
     // Set up Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
 
     // Set up Dear ImGui style
     ImGui::StyleColorsDark();
@@ -319,15 +320,40 @@ int runStartupGUI(InputSettings& inputSettings) {
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-    // Our state
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
     // Scale font
     ImGui::GetStyle().ScaleAllSizes(GUIScalingFactor);
     ImFontConfig fontConfig;
     constexpr float defaultFontSize = 13.0f;
     fontConfig.SizePixels = defaultFontSize * GUIScalingFactor;
     ImGui::GetIO().Fonts->AddFontDefault(&fontConfig);
+}
+
+// Set input settings from a GUI
+bool runStartupGUI(InputSettings& inputSettings) {
+    // 0: Continue running startup GUI, 1: Start data collection, -1: Quit program
+    int startCollection = 0;
+    
+    std::string errorText = "";
+
+    inputSettings.OutputFileName = getIndexedFilename();
+
+    // Correct font scaling
+    if(!glfwInit()) {
+        exit(EXIT_FAILURE);
+    }
+
+    // Create application window
+    WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Program Settings"), NULL};
+    ::RegisterClassEx(&wc);
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Program Settings"), WS_OVERLAPPEDWINDOW, 100, 100, 640, 480, NULL, NULL, wc.hInstance, NULL);
+    
+    initImGui(wc, hwnd);
+
+    // Get main configuration and I/O between application and ImGui
+    ImGuiIO& io = ImGui::GetIO(); (void) io;
+
+    // Our state
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
     MSG msg;
@@ -377,13 +403,13 @@ int runStartupGUI(InputSettings& inputSettings) {
     
     // Stop program if the window was closed or Quit was clicked
     if(msg.message == WM_QUIT || startCollection == -1) {
-        return -1;
+        return false;
     }
 
     // Empty message queue
     while(::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE) != 0) {}
 
-    return 0;
+    return true;
 }
 
 // Process 3D viewer window key inputs
@@ -469,7 +495,7 @@ bool ParseInputSettingsFromArg(int argc, char** argv, InputSettings& inputSettin
     // Set output filename to default if not specified
     if (inputSettings.OutputFileName == "")
     {
-        inputSettings.OutputFileName = "output" + std::to_string(getFilenameIndex()) + ".csv";
+        inputSettings.OutputFileName = getIndexedFilename();
     }
     // Check if output file already exists
     else if (fileExists(inputSettings.OutputFileName))
@@ -608,47 +634,21 @@ void PlayFile(InputSettings inputSettings)
     std::ofstream outputFile;
     initOutputFile(outputFile, inputSettings.OutputFileName);
 
+    int processed_frames = 0;
+    auto startTime = std::chrono::high_resolution_clock::now();
+
     // Create application window
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Azure Kinect Data"), NULL };
     ::RegisterClassEx(&wc);
     HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Azure Kinect Data"), WS_OVERLAPPEDWINDOW, 100, 100, 480, 640, NULL, NULL, wc.hInstance, NULL);
 
-    // Initialize Direct3D
-    if (!CreateDeviceD3D(hwnd))
-    {
-        CleanupDeviceD3D();
-        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
-        exit(1);
-    }
+    initImGui(wc, hwnd);
 
-    // Show the window
-    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
-    ::UpdateWindow(hwnd);
-
-    // Set up Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    // Get main configuration and I/O between application and ImGui
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-    // Set up Dear ImGui style
-    ImGui::StyleColorsDark();
-
-    // Set up Platform/Renderer bindings
-    ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
     // Our state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-    // Scale font
-    ImGui::GetStyle().ScaleAllSizes(GUIScalingFactor);
-    ImFontConfig fontConfig;
-    constexpr float defaultFontSize = 13.0f;
-    fontConfig.SizePixels = defaultFontSize * GUIScalingFactor;
-    ImGui::GetIO().Fonts->AddFontDefault(&fontConfig);
-
-    int frame_count = 0;
-    auto startTime = std::chrono::high_resolution_clock::now();
 
     // Main loop
     MSG msg;
@@ -685,7 +685,9 @@ void PlayFile(InputSettings inputSettings)
                 // If no depth image, print a warning and skip to next frame
                 printf("Warning: No depth image, skipping frame\n");
                 k4a_capture_release(capture);
-                frame_count++;
+
+                // Add empty line to output file
+                outputFile << ",,,,," << std::endl;
                 continue;
             }
             // Release the depth image
@@ -704,7 +706,7 @@ void PlayFile(InputSettings inputSettings)
             if (pop_frame_result == K4A_WAIT_RESULT_SUCCEEDED)
             {
                 /************* Successfully got a body tracking result, process the result here ***************/
-                processFrame(bodyFrame, outputFile, frame_count, startTime);
+                processFrame(bodyFrame, outputFile, processed_frames, startTime);
 
                 VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
                 // Release the bodyFrame
@@ -735,12 +737,6 @@ void PlayFile(InputSettings inputSettings)
         window3d.SetLayout3d(s_layoutMode);
         window3d.SetJointFrameVisualization(s_visualizeJointFrame);
         window3d.Render();
-
-        if (result == K4A_STREAM_RESULT_EOF)
-        {
-            // End of file reached
-            break;
-        }
     }
     k4abt_tracker_shutdown(tracker);
     k4abt_tracker_destroy(tracker);
@@ -794,47 +790,21 @@ void PlayFromDevice(InputSettings inputSettings) {
     std::ofstream outputFile;
     initOutputFile(outputFile, inputSettings.OutputFileName);
 
+    int processed_frames = 0;
+    auto startTime = std::chrono::high_resolution_clock::now();
+
     // Create application window
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Azure Kinect Data"), NULL };
     ::RegisterClassEx(&wc);
-    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Azure Kinect Data"), WS_OVERLAPPEDWINDOW, 100, 100, 640, 480, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Azure Kinect Data"), WS_OVERLAPPEDWINDOW, 100, 100, 480, 640, NULL, NULL, wc.hInstance, NULL);
 
-    // Initialize Direct3D
-    if (!CreateDeviceD3D(hwnd))
-    {
-        CleanupDeviceD3D();
-        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
-        exit(1);
-    }
+    initImGui(wc, hwnd);
 
-    // Show the window
-    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
-    ::UpdateWindow(hwnd);
-
-    // Set up Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    // Get main configuration and I/O between application and ImGui
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-    // Set up Dear ImGui style
-    ImGui::StyleColorsDark();
-
-    // Set up Platform/Renderer bindings
-    ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
     // Our state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-    // Scale font
-    ImGui::GetStyle().ScaleAllSizes(GUIScalingFactor);
-    ImFontConfig fontConfig;
-    constexpr float defaultFontSize = 13.0f;
-    fontConfig.SizePixels = defaultFontSize * GUIScalingFactor;
-    ImGui::GetIO().Fonts->AddFontDefault(&fontConfig);
-
-    int frame_count = 0;
-    auto startTime = std::chrono::high_resolution_clock::now();
 
     // Main loop
     MSG msg;
@@ -876,7 +846,7 @@ void PlayFromDevice(InputSettings inputSettings) {
             if (queueCaptureResult == K4A_WAIT_RESULT_FAILED)
             {
                 std::string errorText = "Error! Add capture to tracker process queue failed!";
-                std::cout << errorText << std::endl;
+                printf("%s\n", errorText.c_str());
                 MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
                 break;
             }
@@ -884,7 +854,7 @@ void PlayFromDevice(InputSettings inputSettings) {
         else if (getCaptureResult != K4A_WAIT_RESULT_TIMEOUT)
         {
             std::string errorText = "Get depth capture returned error";
-            std::cout << errorText << ": " << getCaptureResult << std::endl;
+            printf("%s: %d\n", errorText.c_str(), getCaptureResult);
             MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
             break;
         }
@@ -895,7 +865,7 @@ void PlayFromDevice(InputSettings inputSettings) {
         if (popFrameResult == K4A_WAIT_RESULT_SUCCEEDED)
         {
             /************* Successfully got a body tracking result, process the result here ***************/
-            processFrame(bodyFrame, outputFile, frame_count, startTime);
+            processFrame(bodyFrame, outputFile, processed_frames, startTime);
 
             VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
             // Release the bodyFrame
@@ -921,7 +891,7 @@ void PlayFromDevice(InputSettings inputSettings) {
         window3d.Render();
     }
 
-    std::cout << "Finished body tracking processing!" << std::endl;
+    printf("Finished body tracking processing!\n");
 
     window3d.Delete();
     k4abt_tracker_shutdown(tracker);

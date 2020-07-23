@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 
     // Run startup GUI if there are no command line arguments
     if((argc > 1 && ParseInputSettingsFromArg(argc, argv, inputSettings)) ||
-       (argc == 1 && runStartupGUI(inputSettings) == 0)) {
+       (argc == 1 && runStartupGUI(inputSettings))) {
         // Either play the offline file or play from the device
         if(inputSettings.Offline == true) {
             PlayFile(inputSettings);
