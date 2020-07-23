@@ -85,7 +85,9 @@ void initOutputFile(std::ofstream& outputFile, std::string& outputFileName) {
         printf("Open file %s succeeded.\n", outputFileName.c_str());
     }
     else {
-        printf("Open file %s failed.\n", outputFileName.c_str());
+        std::string errorText = "Open file " + outputFileName + " failed.";
+        printf("%s\n", errorText.c_str());
+        MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
         s_isRunning = false; // Stop data collection from running
     }
 
@@ -258,13 +260,17 @@ void PlayFile(InputSettings inputSettings)
     const char* inputFileName = inputSettings.InputFileName.c_str();
     if (k4a_playback_open(inputFileName, &playback_handle) != K4A_RESULT_SUCCEEDED)
     {
-        printf("Failed to open recording: %s\n", inputFileName);
+        std::string errorText = "Failed to open recording: " + std::string(inputFileName);
+        printf("%s\n", errorText.c_str());
+        MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
         return;
     }
 
     if (k4a_playback_get_calibration(playback_handle, &sensor_calibration) != K4A_RESULT_SUCCEEDED)
     {
-        printf("Failed to get calibration\n");
+        std::string errorText = "Failed to get calibration";
+        printf("%s\n", errorText.c_str());
+        MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
         return;
     }
 
@@ -371,7 +377,9 @@ void PlayFile(InputSettings inputSettings)
             }
             else
             {
-                printf("Pop body frame result failed!\n");
+                std::string errorText = "Pop body frame result failed!";
+                printf("%s\n", errorText.c_str());
+                MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
                 break;
             }
 
@@ -506,8 +514,8 @@ void PlayFromDevice(InputSettings inputSettings) {
         }
         else if (getCaptureResult != K4A_WAIT_RESULT_TIMEOUT)
         {
-            std::string errorText = "Get depth capture returned error";
-            printf("%s: %d\n", errorText.c_str(), getCaptureResult);
+            std::string errorText = "Get depth capture returned error: " + std::to_string(getCaptureResult);
+            printf("%s\n", errorText.c_str());
             MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
             break;
         }

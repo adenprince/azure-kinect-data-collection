@@ -75,7 +75,9 @@ std::string getIndexedFilename() {
 
     // Check if the maximum number of numbered output files has been reached
     if(fileIndex == INT_MAX && fileExists(curFilename)) {
-        printf("Maximum number of indexed output files used.\n");
+        std::string errorText = "Maximum number of indexed output files used.";
+        printf("%s\n", errorText.c_str());
+        MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
         exit(1);
     }
 
