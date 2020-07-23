@@ -17,6 +17,7 @@ extern ID3D11RenderTargetView* g_mainRenderTargetView;
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Forward declarations of helper functions
+void initImGui(WNDCLASSEX& wc, HWND& hwnd);
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();

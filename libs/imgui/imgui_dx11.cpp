@@ -7,6 +7,42 @@ ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 
 // Helper functions
 
+// Initialize ImGui for DirectX 11
+void initImGui(WNDCLASSEX& wc, HWND& hwnd)
+{
+    const float GUIScalingFactor = 1.5f;
+
+    // Initialize Direct3D
+    if (!CreateDeviceD3D(hwnd))
+    {
+        CleanupDeviceD3D();
+        ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+        exit(1);
+    }
+
+    // Show the window
+    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
+    ::UpdateWindow(hwnd);
+
+    // Set up Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    // Set up Dear ImGui style
+    ImGui::StyleColorsDark();
+
+    // Set up Platform/Renderer bindings
+    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+    // Scale font
+    ImGui::GetStyle().ScaleAllSizes(GUIScalingFactor);
+    ImFontConfig fontConfig;
+    constexpr float defaultFontSize = 13.0f;
+    fontConfig.SizePixels = defaultFontSize * GUIScalingFactor;
+    ImGui::GetIO().Fonts->AddFontDefault(&fontConfig);
+}
+
 bool CreateDeviceD3D(HWND hWnd)
 {
     // Setup swap chain

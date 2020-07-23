@@ -24,6 +24,8 @@ struct InputSettings {
 
 // Print command-line argument usage to the command line
 void PrintUsage();
+// Print 3D viewer window controls to the command line
+void PrintAppUsage();
 // Set input settings from a GUI
 bool runStartupGUI(InputSettings& is);
 // Set input settings from command-line arguments
