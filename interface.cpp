@@ -188,6 +188,9 @@ bool runStartupGUI(InputSettings& inputSettings) {
 
     // Correct font scaling
     if(!glfwInit()) {
+        std::string errorText = "GLFW failed to initialize.";
+        printf("%s\n", errorText.c_str());
+        MessageBoxA(0, errorText.c_str(), NULL, MB_OK | MB_ICONHAND);
         exit(EXIT_FAILURE);
     }
 

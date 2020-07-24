@@ -1,3 +1,5 @@
+#include <cstdio>
+
 #include "imgui_dx11.h"
 
 ID3D11Device* g_pd3dDevice = NULL;
@@ -15,6 +17,9 @@ void initImGui(WNDCLASSEX& wc, HWND& hwnd)
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
     {
+        const char* errorText = "Direct3D failed to initialize.";
+        printf("%s\n", errorText);
+        MessageBoxA(0, errorText, NULL, MB_OK | MB_ICONHAND);
         CleanupDeviceD3D();
         ::UnregisterClass(wc.lpszClassName, wc.hInstance);
         exit(1);
