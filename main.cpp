@@ -10,8 +10,6 @@
 
 #include "3DViewer.h"
 
-using namespace std;
-
 int main(int argc, char* argv[]) {
     InputSettings inputSettings;
 

@@ -18,26 +18,24 @@
 #include "3DViewer.h"
 
 // Print command-line argument usage to the command line
-void PrintUsage()
-{
-    printf("\nUSAGE: (k4abt_)simple_3d_viewer.exe SensorMode[NFOV_UNBINNED, WFOV_BINNED](optional) RuntimeMode[CPU](optional)\n");
+void PrintUsage() {
+    printf("\nUSAGE: AzureKinectDataCollection.exe SensorMode[NFOV_UNBINNED, WFOV_BINNED](optional) RuntimeMode[CPU](optional)\n");
     printf("  - SensorMode: \n");
     printf("      NFOV_UNBINNED (default) - Narrow Field of View Unbinned Mode [Resolution: 640x576; FOI: 75 degree x 65 degree]\n");
     printf("      WFOV_BINNED             - Wide Field of View Binned Mode [Resolution: 512x512; FOI: 120 degree x 120 degree]\n");
     printf("  - RuntimeMode: \n");
     printf("      CPU - Use the CPU only mode. It runs on machines without a GPU but it will be much slower\n");
     printf("      OFFLINE - Play a specified file. Does not require Kinect device\n");
-    printf("      OUTPUT - Write angle information to a specified file in CSV format.\n");
-    printf("e.g.   (k4abt_)simple_3d_viewer.exe WFOV_BINNED CPU\n");
-    printf("e.g.   (k4abt_)simple_3d_viewer.exe CPU\n");
-    printf("e.g.   (k4abt_)simple_3d_viewer.exe WFOV_BINNED\n");
-    printf("e.g.   (k4abt_)simple_3d_viewer.exe OFFLINE MyFile.mkv\n");
-    printf("e.g.   (k4abt_)simple_3d_viewer.exe OUTPUT output.csv\n");
+    printf("      OUTPUT - Write angle information to a specified file in CSV format\n");
+    printf("e.g.   AzureKinectDataCollection.exe WFOV_BINNED CPU\n");
+    printf("e.g.   AzureKinectDataCollection.exe CPU\n");
+    printf("e.g.   AzureKinectDataCollection.exe WFOV_BINNED\n");
+    printf("e.g.   AzureKinectDataCollection.exe OFFLINE MyFile.mkv\n");
+    printf("e.g.   AzureKinectDataCollection.exe OUTPUT output.csv\n");
 }
 
 // Print 3D viewer window controls to the command line
-void PrintAppUsage()
-{
+void PrintAppUsage() {
     printf("\n");
     printf(" Basic Navigation:\n\n");
     printf(" Rotate: Rotate the camera by moving the mouse while holding mouse left button\n");
@@ -264,28 +262,22 @@ bool runStartupGUI(InputSettings& inputSettings) {
 }
 
 // Set input settings from command-line arguments
-bool ParseInputSettingsFromArg(int argc, char** argv, InputSettings& inputSettings)
-{
-    for (int i = 1; i < argc; i++)
-    {
+bool ParseInputSettingsFromArg(int argc, char** argv, InputSettings& inputSettings) {
+    for(int i = 1; i < argc; i++) {
         std::string inputArg(argv[i]);
-        if (inputArg == std::string("NFOV_UNBINNED"))
-        {
+        if(inputArg == std::string("NFOV_UNBINNED")) {
             inputSettings.DepthCameraMode = K4A_DEPTH_MODE_NFOV_UNBINNED;
         }
-        else if (inputArg == std::string("WFOV_BINNED"))
-        {
+        else if(inputArg == std::string("WFOV_BINNED")) {
             inputSettings.DepthCameraMode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
         }
-        else if (inputArg == std::string("CPU"))
-        {
+        else if(inputArg == std::string("CPU")) {
             inputSettings.CpuOnlyMode = true;
         }
-        else if (inputArg == std::string("OFFLINE"))
-        {
+        else if(inputArg == std::string("OFFLINE")) {
             inputSettings.Offline = true;
-            if (i < argc - 1) {
-                // Take the next argument after OFFLINE as file name
+            if(i < argc - 1) {
+                // Take the next argument after OFFLINE as input file name
                 inputSettings.InputFileName = argv[i + 1];
                 i++;
             }
@@ -293,34 +285,28 @@ bool ParseInputSettingsFromArg(int argc, char** argv, InputSettings& inputSettin
                 return false;
             }
         }
-        else if (inputArg == std::string("OUTPUT"))
-        {
-            if (i < argc - 1)
-            {
-                // Take the next argument after OUTPUT as file name
+        else if(inputArg == std::string("OUTPUT")) {
+            if(i < argc - 1) {
+                // Take the next argument after OUTPUT as output file name
                 inputSettings.OutputFileName = argv[i + 1];
                 i++;
             }
-            else
-            {
+            else {
                 return false;
             }
         }
-        else
-        {
+        else {
             printf("Error command not understood: %s\n", inputArg.c_str());
             return false;
         }
     }
 
     // Set output filename to default if not specified
-    if (inputSettings.OutputFileName == "")
-    {
+    if(inputSettings.OutputFileName == "") {
         inputSettings.OutputFileName = getIndexedFilename();
     }
     // Check if output file already exists
-    else if (fileExists(inputSettings.OutputFileName))
-    {
+    else if(fileExists(inputSettings.OutputFileName)) {
         printf("File %s already exists.\n", inputSettings.OutputFileName.c_str());
         return false;
     }
