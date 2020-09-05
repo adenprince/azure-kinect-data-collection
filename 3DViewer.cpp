@@ -404,6 +404,12 @@ void PlayFromDevice(InputSettings inputSettings) {
     k4a_device_configuration_t deviceConfig = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
     deviceConfig.depth_mode = inputSettings.DepthCameraMode;
     deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_OFF;
+
+    // 15 FPS is required for the WFOV_UNBINNED depth mode
+    if(inputSettings.DepthCameraMode == K4A_DEPTH_MODE_WFOV_UNBINNED) {
+        deviceConfig.camera_fps = K4A_FRAMES_PER_SECOND_15;
+    }
+
     VERIFY(k4a_device_start_cameras(device, &deviceConfig), "Start K4A cameras failed!");
 
     // Get calibration information

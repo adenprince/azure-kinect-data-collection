@@ -87,8 +87,8 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
     // 0: Continue running startup GUI, 1: Start data collection, -1: Quit program
     int startCollection = 0;
 
-    const char* depth_modes[] = {"NFOV_UNBINNED", "WFOV_BINNED"};
-    static int depth_mode_index = 0; // Default depth mode is NFOV_UNBINNED
+    const char* depth_modes[] = {"NFOV_2X2BINNED", "NFOV_UNBINNED", "WFOV_2X2BINNED", "WFOV_UNBINNED"};
+    static int depth_mode_index = 1; // Default depth mode is NFOV_UNBINNED
     static bool cpu_mode = false;
     static bool offline_mode = false;
     static char input_filename[128] = "";
@@ -132,8 +132,15 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
         inputSettings.Offline = offline_mode;
         inputSettings.InputFileName = input_filename;
 
-        if(depth_mode_index == 1) {
+        if(depth_mode_index == 0) {
+            inputSettings.DepthCameraMode = K4A_DEPTH_MODE_NFOV_2X2BINNED;
+        }
+        // No check for index 1 because depth mode is NFOV_UNBINNED by default
+        else if(depth_mode_index == 2) {
             inputSettings.DepthCameraMode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
+        }
+        else if(depth_mode_index == 3) {
+            inputSettings.DepthCameraMode = K4A_DEPTH_MODE_WFOV_UNBINNED;
         }
 
         // 1 is returned and data collection starts if there are no errors
@@ -268,11 +275,17 @@ bool runStartupGUI(InputSettings& inputSettings) {
 bool ParseInputSettingsFromArg(int argc, char** argv, InputSettings& inputSettings) {
     for(int i = 1; i < argc; i++) {
         std::string inputArg(argv[i]);
-        if(inputArg == std::string("NFOV_UNBINNED")) {
+        if(inputArg == std::string("NFOV_BINNED")) {
+            inputSettings.DepthCameraMode = K4A_DEPTH_MODE_NFOV_2X2BINNED;
+        }
+        else if(inputArg == std::string("NFOV_UNBINNED")) {
             inputSettings.DepthCameraMode = K4A_DEPTH_MODE_NFOV_UNBINNED;
         }
         else if(inputArg == std::string("WFOV_BINNED")) {
             inputSettings.DepthCameraMode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
+        }
+        else if(inputArg == std::string("WFOV_UNBINNED")) {
+            inputSettings.DepthCameraMode = K4A_DEPTH_MODE_WFOV_UNBINNED;
         }
         else if(inputArg == std::string("CPU")) {
             inputSettings.CpuOnlyMode = true;
