@@ -89,22 +89,35 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
 
     const char* depth_modes[] = {"NFOV_2X2BINNED", "NFOV_UNBINNED", "WFOV_2X2BINNED", "WFOV_UNBINNED"};
     static int depth_mode_index = 1; // Default depth mode is NFOV_UNBINNED
+    const char* frame_rates[] = {"30", "15", "5"};
+    static int frame_rate_index = 0; // Default target frame rate is 30 FPS
     static bool cpu_mode = false;
     static bool offline_mode = false;
     static char input_filename[128] = "";
     static char output_filename[128] = "";
 
+    // Disable depth mode and frame rate input if collecting data from file
+    if(offline_mode) {
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    }
     ImGui::Combo("Depth camera mode", &depth_mode_index, depth_modes, IM_ARRAYSIZE(depth_modes));
+    ImGui::Combo("Target frame rate", &frame_rate_index, frame_rates, IM_ARRAYSIZE(frame_rates));
+    if(offline_mode) {
+        ImGui::PopItemFlag();
+        ImGui::PopStyleVar();
+    }
+
     ImGui::Checkbox("CPU mode", &cpu_mode);
     ImGui::Checkbox("Collect data from file", &offline_mode);
 
     // Disable input filename text input if not collecting data from file
-    if(offline_mode == false) {
+    if(!offline_mode) {
         ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
     }
-    ImGui::InputText("Input filename", input_filename, IM_ARRAYSIZE(input_filename));
-    if(offline_mode == false) {
+    ImGui::InputText("Input filename (.mkv)", input_filename, IM_ARRAYSIZE(input_filename));
+    if(!offline_mode) {
         ImGui::PopItemFlag();
         ImGui::PopStyleVar();
     }
@@ -143,11 +156,25 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
             inputSettings.DepthCameraMode = K4A_DEPTH_MODE_WFOV_UNBINNED;
         }
 
+        // No check for index 0 because target frame rate is 30 FPS by default
+        if(frame_rate_index == 1) {
+            inputSettings.FrameRate = K4A_FRAMES_PER_SECOND_15;
+        }
+        else if(frame_rate_index == 2) {
+            inputSettings.FrameRate = K4A_FRAMES_PER_SECOND_5;
+        }
+
         // 1 is returned and data collection starts if there are no errors
         startCollection = 1;
 
         // Check for errors
-        if(offline_mode && fileExists(inputSettings.InputFileName) == false) {
+        if(inputSettings.DepthCameraMode == K4A_DEPTH_MODE_WFOV_UNBINNED &&
+           inputSettings.FrameRate == K4A_FRAMES_PER_SECOND_30) {
+            errorText += "ERROR: WFOV_UNBINNED depth mode requires a lower frame rate\n";
+            startCollection = 0;
+        }
+
+        if(offline_mode && !fileExists(inputSettings.InputFileName)) {
             errorText += "ERROR: Input file \"" + inputSettings.InputFileName + "\" does not exist\n";
             startCollection = 0;
         }
@@ -204,7 +231,7 @@ bool runStartupGUI(InputSettings& inputSettings) {
     // Create application window
     WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Program Settings"), NULL};
     ::RegisterClassEx(&wc);
-    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Program Settings"), WS_OVERLAPPEDWINDOW, 100, 100, 640, 480, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Program Settings"), WS_OVERLAPPEDWINDOW, 100, 100, 720, 520, NULL, NULL, wc.hInstance, NULL);
 
     initImGui(wc, hwnd);
 
@@ -286,6 +313,15 @@ bool ParseInputSettingsFromArg(int argc, char** argv, InputSettings& inputSettin
         }
         else if(inputArg == std::string("WFOV_UNBINNED")) {
             inputSettings.DepthCameraMode = K4A_DEPTH_MODE_WFOV_UNBINNED;
+        }
+        else if(inputArg == std::string("30_FPS")) {
+            inputSettings.FrameRate = K4A_FRAMES_PER_SECOND_30;
+        }
+        else if(inputArg == std::string("15_FPS")) {
+            inputSettings.FrameRate = K4A_FRAMES_PER_SECOND_15;
+        }
+        else if(inputArg == std::string("5_FPS")) {
+            inputSettings.FrameRate = K4A_FRAMES_PER_SECOND_5;
         }
         else if(inputArg == std::string("CPU")) {
             inputSettings.CpuOnlyMode = true;

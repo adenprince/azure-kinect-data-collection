@@ -16,6 +16,7 @@
 // Store option values for the program
 struct InputSettings {
     k4a_depth_mode_t DepthCameraMode = K4A_DEPTH_MODE_NFOV_UNBINNED;
+    k4a_fps_t FrameRate = K4A_FRAMES_PER_SECOND_30;
     bool CpuOnlyMode = false;
     bool Offline = false;
     std::string InputFileName;

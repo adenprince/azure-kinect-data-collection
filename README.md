@@ -4,6 +4,6 @@ This tool collects body joint angle data from an Azure Kinect or an MKV file wit
 
 ## Usage
 
-A startup GUI with program options will open if there are no command-line arguments. 3D viewer window controls and command-line arguments are the same as the [Simple3dViewer](https://github.com/microsoft/Azure-Kinect-Samples/blob/master/body-tracking-samples/simple_3d_viewer/README.md#usage-info), with an added optional argument to set the output CSV file:
+A startup GUI with program options will open if there are no command-line arguments. 3D viewer window controls and command-line arguments are the same as the [Simple3dViewer](https://github.com/microsoft/Azure-Kinect-Samples/blob/master/body-tracking-samples/simple_3d_viewer/README.md#usage-info), with added optional arguments for the target frame rate (5, 15 and 30 FPS) and the output CSV file:
 
-    AzureKinectDataCollection.exe OUTPUT outputNew.csv
+    AzureKinectDataCollection.exe 15_FPS OUTPUT outputNew.csv
