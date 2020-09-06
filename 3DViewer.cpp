@@ -96,18 +96,18 @@ void initOutputFile(std::ofstream& outputFile, std::string& outputFileName) {
 }
 
 // Display body and angle information from frame
-void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& processed_frames, std::chrono::high_resolution_clock::time_point& startTime) {
+void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& processed_frames, std::chrono::high_resolution_clock::time_point& prevTime) {
     size_t num_bodies = k4abt_frame_get_num_bodies(bodyFrame);
     processed_frames++;
-    auto stopTime = std::chrono::high_resolution_clock::now();
+    auto curTime = std::chrono::high_resolution_clock::now();
 
     // The first frame should be 0 ms from the previous frame
     if(processed_frames == 1) {
-        startTime = stopTime;
+        prevTime = curTime;
     }
 
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stopTime - startTime);
-    startTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(curTime - prevTime);
+    prevTime = std::chrono::high_resolution_clock::now();
     long long durationCount = duration.count();
 
     // Start ImGui window
@@ -279,9 +279,6 @@ void PlayFile(InputSettings inputSettings) {
     std::ofstream outputFile;
     initOutputFile(outputFile, inputSettings.OutputFileName);
 
-    int processed_frames = 0;
-    auto startTime = std::chrono::high_resolution_clock::now();
-
     // Create application window
     WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Azure Kinect Data"), NULL};
     ::RegisterClassEx(&wc);
@@ -298,6 +295,10 @@ void PlayFile(InputSettings inputSettings) {
     // Main loop
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
+
+    int processed_frames = 0;
+    auto prevTime = std::chrono::high_resolution_clock::now();
+    auto startTime = prevTime;
 
     // Run until getting capture data fails
     while(result == K4A_STREAM_RESULT_SUCCEEDED) {
@@ -345,7 +346,7 @@ void PlayFile(InputSettings inputSettings) {
             k4a_wait_result_t pop_frame_result = k4abt_tracker_pop_result(tracker, &bodyFrame, K4A_WAIT_INFINITE);
             if(pop_frame_result == K4A_WAIT_RESULT_SUCCEEDED) {
                 // Successfully got a body tracking result, process the result here
-                processFrame(bodyFrame, outputFile, processed_frames, startTime);
+                processFrame(bodyFrame, outputFile, processed_frames, prevTime);
 
                 VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
                 // Release the bodyFrame
@@ -375,6 +376,13 @@ void PlayFile(InputSettings inputSettings) {
         window3d.SetLayout3d(s_layoutMode);
         window3d.SetJointFrameVisualization(s_visualizeJointFrame);
         window3d.Render();
+
+        // Stop program if the run time has been reached
+        auto curTime = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(curTime - startTime);
+        if(inputSettings.RunTime >= 0 && duration.count() >= inputSettings.RunTime) {
+            break;
+        }
     }
 
     k4abt_tracker_shutdown(tracker);
@@ -429,9 +437,6 @@ void PlayFromDevice(InputSettings inputSettings) {
     std::ofstream outputFile;
     initOutputFile(outputFile, inputSettings.OutputFileName);
 
-    int processed_frames = 0;
-    auto startTime = std::chrono::high_resolution_clock::now();
-
     // Create application window
     WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Azure Kinect Data"), NULL};
     ::RegisterClassEx(&wc);
@@ -448,6 +453,10 @@ void PlayFromDevice(InputSettings inputSettings) {
     // Main loop
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
+
+    int processed_frames = 0;
+    auto prevTime = std::chrono::high_resolution_clock::now();
+    auto startTime = prevTime;
 
     // Run until the program is closed
     while(s_isRunning) {
@@ -498,7 +507,7 @@ void PlayFromDevice(InputSettings inputSettings) {
         k4a_wait_result_t popFrameResult = k4abt_tracker_pop_result(tracker, &bodyFrame, 0); // timeout_in_ms is set to 0
         if(popFrameResult == K4A_WAIT_RESULT_SUCCEEDED) {
             // Successfully got a body tracking result, process the result here
-            processFrame(bodyFrame, outputFile, processed_frames, startTime);
+            processFrame(bodyFrame, outputFile, processed_frames, prevTime);
 
             VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
             // Release the bodyFrame
@@ -521,6 +530,13 @@ void PlayFromDevice(InputSettings inputSettings) {
         window3d.SetLayout3d(s_layoutMode);
         window3d.SetJointFrameVisualization(s_visualizeJointFrame);
         window3d.Render();
+
+        // Stop program if the run time has been reached
+        auto curTime = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(curTime - startTime);
+        if(inputSettings.RunTime >= 0 && duration.count() >= inputSettings.RunTime) {
+            s_isRunning = false;
+        }
     }
 
     printf("Finished body tracking processing!\n");

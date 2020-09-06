@@ -19,6 +19,7 @@ struct InputSettings {
     k4a_fps_t FrameRate = K4A_FRAMES_PER_SECOND_30;
     bool CpuOnlyMode = false;
     bool Offline = false;
+    int RunTime = -1;
     std::string InputFileName;
     std::string OutputFileName;
 };

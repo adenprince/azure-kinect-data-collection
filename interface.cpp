@@ -93,6 +93,8 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
     static int frame_rate_index = 0; // Default target frame rate is 30 FPS
     static bool cpu_mode = false;
     static bool offline_mode = false;
+    static bool run_for_time = false;
+    static float run_time = 0.0f;
     static char input_filename[128] = "";
     static char output_filename[128] = "";
 
@@ -110,6 +112,18 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
 
     ImGui::Checkbox("CPU mode", &cpu_mode);
     ImGui::Checkbox("Collect data from file", &offline_mode);
+    ImGui::Checkbox("Run for set time", &run_for_time);
+
+    // Disable seconds to run text input if not running for a set time
+    if(!run_for_time) {
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    }
+    ImGui::InputFloat("Seconds to run", &run_time);
+    if(!run_for_time) {
+        ImGui::PopItemFlag();
+        ImGui::PopStyleVar();
+    }
 
     // Disable input filename text input if not collecting data from file
     if(!offline_mode) {
@@ -145,6 +159,10 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
         inputSettings.Offline = offline_mode;
         inputSettings.InputFileName = input_filename;
 
+        if(run_for_time) {
+            inputSettings.RunTime = (int) (run_time * 1000.0f);
+        }
+
         if(depth_mode_index == 0) {
             inputSettings.DepthCameraMode = K4A_DEPTH_MODE_NFOV_2X2BINNED;
         }
@@ -171,6 +189,11 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
         if(inputSettings.DepthCameraMode == K4A_DEPTH_MODE_WFOV_UNBINNED &&
            inputSettings.FrameRate == K4A_FRAMES_PER_SECOND_30) {
             errorText += "ERROR: WFOV_UNBINNED depth mode requires a lower frame rate\n";
+            startCollection = 0;
+        }
+
+        if(run_for_time && inputSettings.RunTime < 0) {
+            errorText += "ERROR: Run time cannot be negative\n";
             startCollection = 0;
         }
 
@@ -322,6 +345,10 @@ bool ParseInputSettingsFromArg(int argc, char** argv, InputSettings& inputSettin
         }
         else if(inputArg == std::string("5_FPS")) {
             inputSettings.FrameRate = K4A_FRAMES_PER_SECOND_5;
+        }
+        else if(inputArg.substr(0, 9) == std::string("RUN_TIME=")) {
+            float runTime = stof(inputArg.substr(9, inputArg.size() - 9));
+            inputSettings.RunTime = (int) (runTime * 1000.0f);
         }
         else if(inputArg == std::string("CPU")) {
             inputSettings.CpuOnlyMode = true;
