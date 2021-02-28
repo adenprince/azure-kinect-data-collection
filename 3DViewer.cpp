@@ -138,11 +138,6 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& proc
     ImGui::Text("Frames processed: %d", processed_frames);
     ImGui::Text("Time: %.3f s", timeSinceStart);
 
-    // Add empty line to CSV file if no bodies are detected
-    if(num_bodies == 0) {
-        outputFile << timeSinceStart << ",,,,," << std::endl;
-    }
-
     // Process each detected body
     for(uint32_t i = 0; i < num_bodies; i++) {
         // Get and display data from current body
