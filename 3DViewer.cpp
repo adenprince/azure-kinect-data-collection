@@ -74,7 +74,26 @@ void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, std::ofstream& outp
 
     outputFile << durationCount << "," << id << ","
                << leftElbowAngle << "," << rightElbowAngle << ","
-               << leftKneeAngle << "," << rightKneeAngle << std::endl;
+               << leftKneeAngle << "," << rightKneeAngle << ",";
+
+    // Write joint positions and distance from sensor to output file
+    for(int i = 0; i < K4ABT_JOINT_COUNT; ++i) {
+        // Convert joint position values from millimeters to meters
+        for(int j = 0; j < 3; ++j) {
+            skeleton.joints[i].position.v[j] /= 1000;
+        }
+
+        k4a_float3_t::_xyz curJointPos = skeleton.joints[i].position.xyz;
+
+        float distFromSensor = sqrtf(curJointPos.x * curJointPos.x +
+                                     curJointPos.y * curJointPos.y +
+                                     curJointPos.z * curJointPos.z);
+
+        outputFile << "\"<" << curJointPos.x << ", " << curJointPos.y 
+                   << ", " << curJointPos.z << ">, " << distFromSensor << "\",";
+    }
+
+    outputFile << std::endl;
 }
 
 // Attempt to open output file and write the first line
@@ -92,7 +111,16 @@ void initOutputFile(std::ofstream& outputFile, std::string& outputFileName) {
     }
 
     // Write column names to output file
-    outputFile << "Time Since Last Frame,ID,Left Elbow Angle,Right Elbow Angle,Left Knee Angle,Right Knee Angle" << std::endl;
+    outputFile << "Time Since Last Frame,ID,Left Elbow Angle,Right Elbow "
+               << "Angle,Left Knee Angle,Right Knee Angle,Pelvis Pos,"
+               << "SpineNavel Pos,SpineChest Pos,Neck Pos,ClavicleLeft Pos,"
+               << "ShoulderLeft Pos,ElbowLeft Pos,WristLeft Pos,HandLeft Pos,"
+               << "HandTipLeft Pos,ThumbLeft Pos,ClavicleRight Pos,"
+               << "ShoulderRight Pos,ElbowRight Pos,WristRight Pos,HandRight "
+               << "Pos,HandTipRight Pos,ThumbRight Pos,HipLeft Pos,KneeLeft "
+               << "Pos,AnkleLeft Pos,FootLeft Pos,HipRight Pos,KneeRight Pos,"
+               << "AnkleRight Pos,FootRight Pos,Head Pos,Nose Pos,EyeLeft Pos,"
+               << "EarLeft Pos,EyeRight Pos,EarRight Pos" << std::endl;
 }
 
 // Display body and angle information from frame
