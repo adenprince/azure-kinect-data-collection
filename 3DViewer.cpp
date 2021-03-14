@@ -83,14 +83,16 @@ void getJointAngles(uint32_t id, k4abt_skeleton_t& skeleton, std::ofstream& outp
             skeleton.joints[i].position.v[j] /= 1000;
         }
 
-        k4a_float3_t::_xyz curJointPos = skeleton.joints[i].position.xyz;
+        k4abt_joint_t curJoint = skeleton.joints[i];
+        k4a_float3_t::_xyz curJointPos = curJoint.position.xyz;
 
         float distFromSensor = sqrtf(curJointPos.x * curJointPos.x +
                                      curJointPos.y * curJointPos.y +
                                      curJointPos.z * curJointPos.z);
 
         outputFile << "\"<" << curJointPos.x << ", " << curJointPos.y 
-                   << ", " << curJointPos.z << ">, " << distFromSensor << "\",";
+                   << ", " << curJointPos.z << ">, " << distFromSensor
+                   << ":" << curJoint.confidence_level << "\",";
     }
 
     outputFile << std::endl;
@@ -344,8 +346,6 @@ void PlayFile(InputSettings inputSettings) {
                 printf("Warning: No depth image, skipping frame\n");
                 k4a_capture_release(capture);
 
-                // Add empty line to output file
-                outputFile << ",,,,," << std::endl;
                 continue;
             }
             // Release the depth image
