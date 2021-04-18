@@ -126,7 +126,7 @@ void initOutputFile(std::ofstream& outputFile, std::string& outputFileName) {
 }
 
 // Display body and angle information from frame
-void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& processedFrames, std::chrono::high_resolution_clock::time_point& startTime) {
+void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& processedFrames, std::chrono::high_resolution_clock::time_point& startTime, bool emptyLines) {
     size_t num_bodies = k4abt_frame_get_num_bodies(bodyFrame);
     processedFrames++;
     auto curTime = std::chrono::high_resolution_clock::now();
@@ -139,6 +139,10 @@ void processFrame(k4abt_frame_t& bodyFrame, std::ofstream& outputFile, int& proc
     ImGui::Text("Bodies detected: %zu", num_bodies);
     ImGui::Text("Frames processed: %d", processedFrames);
     ImGui::Text("Time: %.3f s", timeSinceStart);
+
+    if (emptyLines && num_bodies == 0) {
+        outputFile << processedFrames << ",," << std::endl;
+    }
 
     // Process each detected body
     for(uint32_t i = 0; i < num_bodies; i++) {
@@ -346,6 +350,12 @@ void PlayFile(InputSettings inputSettings) {
                 printf("Warning: No depth image, skipping frame\n");
                 k4a_capture_release(capture);
 
+                ++processedFrames;
+
+                if (inputSettings.EmptyLines) {
+                    outputFile << processedFrames << ",," << std::endl;
+                }
+
                 continue;
             }
             // Release the depth image
@@ -362,7 +372,7 @@ void PlayFile(InputSettings inputSettings) {
             k4a_wait_result_t pop_frame_result = k4abt_tracker_pop_result(tracker, &bodyFrame, K4A_WAIT_INFINITE);
             if(pop_frame_result == K4A_WAIT_RESULT_SUCCEEDED) {
                 // Successfully got a body tracking result, process the result here
-                processFrame(bodyFrame, outputFile, processedFrames, startTime);
+                processFrame(bodyFrame, outputFile, processedFrames, startTime, inputSettings.EmptyLines);
 
                 VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
                 // Release the bodyFrame
@@ -522,7 +532,7 @@ void PlayFromDevice(InputSettings inputSettings) {
         k4a_wait_result_t popFrameResult = k4abt_tracker_pop_result(tracker, &bodyFrame, 0); // timeout_in_ms is set to 0
         if(popFrameResult == K4A_WAIT_RESULT_SUCCEEDED) {
             // Successfully got a body tracking result, process the result here
-            processFrame(bodyFrame, outputFile, processedFrames, startTime);
+            processFrame(bodyFrame, outputFile, processedFrames, startTime, inputSettings.EmptyLines);
 
             VisualizeResult(bodyFrame, window3d, depthWidth, depthHeight);
             // Release the bodyFrame

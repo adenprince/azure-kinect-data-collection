@@ -94,6 +94,7 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
     static bool cpu_mode = false;
     static bool offline_mode = false;
     static bool run_for_time = false;
+    static bool empty_lines = false;
     static float run_time = 0.0f;
     static char input_filename[128] = "";
     static char output_filename[128] = "";
@@ -113,6 +114,7 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
     ImGui::Checkbox("CPU mode", &cpu_mode);
     ImGui::Checkbox("Collect data from file", &offline_mode);
     ImGui::Checkbox("Run for set time", &run_for_time);
+    ImGui::Checkbox("Record lines without body data", &empty_lines);
 
     // Disable seconds to run text input if not running for a set time
     if(!run_for_time) {
@@ -158,6 +160,7 @@ int startupGUIWidgets(InputSettings& inputSettings, std::string& errorText) {
         inputSettings.CpuOnlyMode = cpu_mode;
         inputSettings.Offline = offline_mode;
         inputSettings.InputFileName = input_filename;
+        inputSettings.EmptyLines = empty_lines;
 
         if(run_for_time) {
             inputSettings.RunTime = (int) (run_time * 1000.0f);
